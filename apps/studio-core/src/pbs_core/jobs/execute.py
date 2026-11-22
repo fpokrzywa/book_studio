@@ -17,10 +17,12 @@ from pbs_core.context import AppContext
 from pbs_core.domain.clock import to_iso
 from pbs_core.jobs import prompts
 from pbs_core.jobs.runner import LEASE_SECONDS, add_log
+from pbs_core.knowledge import citations, retrieval
 from pbs_core.providers import registry
 from pbs_core.providers.base import Cancelled, ChatMessage, GenRequest, ProviderError, extract_json
 from pbs_core.providers.egress import EgressBlockedError, cloud_activity
-from pbs_core.services import activity, costs
+from pbs_core.services import activity, costs, evidence
+from pbs_core.services import voice as voice_service
 from pbs_core.storage.ai_models import Job, Proposal, ProviderConfig, UsageRecord
 from pbs_core.storage.models import Chapter, ChapterRevision, Project
 
@@ -100,6 +102,24 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
     context_text = costs.clip_context(
         base_text, sel_start, sel_end, int(inp.get("max_context_chars", costs.MAX_CONTEXT_CHARS))
     )
+    # Knowledge is chosen now, at run time: a source disabled after queueing is not used.
+    query = retrieval_query(inp.get("instruction", ""), selection, context_text, snapshot["chapter_title"])
+    with ctx.db.tx() as s:
+        found = retrieval.retrieve(
+            s,
+            snapshot["project_id"],
+            query,
+            use_sources=bool(inp.get("use_sources", True)),
+            use_interview=bool(inp.get("use_interview", False)),
+        )
+        add_log(
+            s,
+            ctx,
+            job_id,
+            f"Knowledge: {len(found.passages)} passage(s) from {found.source_count} usable source(s); "
+            f"{len(found.answers)} interview answer(s).",
+        )
+    voice = voice_service.for_prompt(ctx, inp["voice_profile_id"]) if inp.get("voice_profile_id") else None
     built = prompts.build(
         snapshot["task"],
         instruction=inp.get("instruction", ""),
@@ -109,6 +129,9 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         selection=selection,
         target_language=inp.get("target_language"),
         target_words=inp.get("target_words"),
+        sources=[r for r in found.refs.values() if r.kind == "source"],
+        answers=[r for r in found.refs.values() if r.kind == "interview"],
+        voice=voice,
     )
     temperature = params.get("temperature")
     native_schema = built.json_schema is not None and registry.native_schema_ok(
@@ -180,6 +203,9 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
             raise ProviderError("invalid_output", "The model returned an empty answer.")
         if built.json_schema is not None:
             payload = _structured_to_markdown(payload)
+        # Check every citation marker against the passages actually provided; flag the rest.
+        processed = citations.process(payload, found.refs)
+        payload = processed.text_md
     except Cancelled:
         _finish(
             ctx,
@@ -220,7 +246,37 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         )
         return
 
-    _commit(ctx, job_id, payload, result, provider, snapshot, built.template, inp)
+    knowledge = {
+        "query": found.query[:300],
+        "sources": [
+            {
+                "label": r.label,
+                "source_id": r.source_id,
+                "chunk_id": r.chunk_id,
+                "title": r.title,
+                "citation_key": r.citation_key,
+                "locator": r.locator,
+            }
+            for r in found.refs.values()
+            if r.kind == "source"
+        ],
+        "interview_answers": [
+            {"label": r.label, "answer_id": r.answer_id, "question": r.title}
+            for r in found.refs.values()
+            if r.kind == "interview"
+        ],
+        "usable_sources": found.source_count,
+        "used_sources": bool(inp.get("use_sources", True)),
+        "voice_profile": voice.get("name") if voice else None,
+        **processed.summary(),
+    }
+    _commit(ctx, job_id, payload, result, provider, snapshot, built.template, inp, knowledge, processed)
+
+
+def retrieval_query(instruction: str, selection: str | None, context_text: str, chapter_title: str) -> str:
+    """What to search the book's sources for: the request, the selection or the end of the chapter, the title."""
+    focus = selection if selection else context_text[-1500:]
+    return f"{instruction} {focus} {chapter_title}"
 
 
 def _structured_to_markdown(text: str) -> str:
@@ -244,6 +300,8 @@ def _commit(
     snapshot: dict[str, Any],
     template: str,
     inp: dict[str, Any],
+    knowledge: dict[str, Any],
+    processed: citations.Processed,
 ) -> None:
     with ctx.db.tx() as s:
         job = s.get(Job, job_id)
@@ -275,9 +333,10 @@ def _commit(
         )
         if existing is None:  # exactly one proposal per job, even across retries and restarts
             mode = inp.get("mode", "note")
+            proposal_id = ctx.ids.new()
             s.add(
                 Proposal(
-                    id=ctx.ids.new(),
+                    id=proposal_id,
                     project_id=snapshot["project_id"],
                     chapter_id=snapshot["chapter_id"],
                     job_id=job_id,
@@ -299,10 +358,20 @@ def _commit(
                             "instruction": inp.get("instruction", "")[:500],
                             "finish_reason": result.finish_reason,
                             "generated_at": ctx.clock.iso(),
+                            "knowledge": knowledge,
                         }
                     ),
                     created_at=ctx.clock.iso(),
                 )
+            )
+            s.flush()
+            evidence.record_proposal_claims(
+                s,
+                ctx,
+                project_id=snapshot["project_id"],
+                chapter_id=snapshot["chapter_id"],
+                proposal_id=proposal_id,
+                processed=processed,
             )
         job.status, job.stage = "succeeded", "ready_for_review"
         job.finished_at = ctx.clock.iso()

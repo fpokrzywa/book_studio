@@ -92,6 +92,24 @@ Status: Draft v0.1 (Phase 00). Principle: **report real results only.** A test t
 
 Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `httpx2.MockTransport`. The Ollama smoke test (`-m ollama`) runs only when Ollama answers. Cloud checks: `python -m pbs_core.live_check`.
 
+### 4.4a Knowledge and evidence (Phase 04, as built)
+
+| Area | Tests |
+|---|---|
+| Provenance, anchors, originals | `test_knowledge.py::test_import_preserves_original_and_records_anchored_chunks`, `test_pdf_passages_carry_page_numbers` |
+| Search with highlights and reasons; inert FTS syntax | `test_search_highlights_exact_passage_with_reasons` |
+| Deduplication (same file, same text, override) | `test_deduplication_by_file_and_by_text` |
+| Remove, re-index, failed source | `test_remove_and_reindex`, `test_unreadable_source_is_recorded_as_failed` |
+| Book scope and shared opt-in | `test_books_only_see_their_own_and_opted_in_sources` |
+| Supporting sources or "unverified" per paragraph; ledger lifecycle; citation export | `test_generated_paragraphs_show_sources_or_unverified`, `test_rejecting_discards_proposed_claims` |
+| Fabricated citation dropped | `test_fabricated_citation_is_dropped_and_flagged` |
+| Disabled source not used (even if queued before) | `test_disabling_a_source_keeps_it_out_of_new_generations` |
+| Prompt injection | `test_malicious_source_text_stays_data`, `test_forged_envelope_in_plain_text_source_is_neutralised` |
+| Voice: rights, analysis, editable guide, preview-only rewrite | `test_voice_interview_backup.py` |
+| Interview: exact, versioned, immutable; no invented experience | `test_voice_interview_backup.py` |
+| Backup/restore of citations, sources, claims, answers | `test_backup_restore_keeps_citations_sources_claims_and_answers` |
+| UI | `Knowledge.test.tsx` and `Ai.test.tsx` (paragraph sources) in Vitest; `e2e/knowledge.spec.ts` in Playwright |
+
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
 - Planning: unsupported market metrics are never produced (assert the schema has no such fields unless a licensed source is configured). An outline change preserves prose.

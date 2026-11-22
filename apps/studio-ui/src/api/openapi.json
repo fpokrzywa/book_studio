@@ -268,6 +268,30 @@
               }
             ],
             "title": "Temperature"
+          },
+          "use_interview": {
+            "default": false,
+            "description": "Give the model the author's interview answers",
+            "title": "Use Interview",
+            "type": "boolean"
+          },
+          "use_sources": {
+            "default": true,
+            "description": "Give the model passages from this book's enabled sources",
+            "title": "Use Sources",
+            "type": "boolean"
+          },
+          "voice_profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rewrite in this author's voice (style guide)",
+            "title": "Voice Profile Id"
           }
         },
         "required": [
@@ -330,6 +354,21 @@
           "secret_store"
         ],
         "title": "AiStatusOut",
+        "type": "object"
+      },
+      "AnswerIn": {
+        "additionalProperties": false,
+        "properties": {
+          "answer_text": {
+            "maxLength": 50000,
+            "title": "Answer Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer_text"
+        ],
+        "title": "AnswerIn",
         "type": "object"
       },
       "AssetOut": {
@@ -412,6 +451,187 @@
         "title": "AssetOut",
         "type": "object"
       },
+      "AuthorProfileCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "default": "author",
+            "enum": [
+              "author",
+              "pen_name"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AuthorProfileCreate",
+        "type": "object"
+      },
+      "AuthorProfileOut": {
+        "properties": {
+          "analysis_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Note"
+          },
+          "analyzed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analyzed At"
+          },
+          "corrections": {
+            "items": {
+              "$ref": "#/components/schemas/CorrectionOut"
+            },
+            "title": "Corrections",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "examples": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "guide_edited": {
+            "title": "Guide Edited",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "author",
+              "pen_name"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/VoiceSampleOut"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "style_guide_md": {
+            "title": "Style Guide Md",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "style_guide_md",
+          "guide_edited",
+          "metrics",
+          "labels",
+          "examples",
+          "corrections",
+          "samples",
+          "analysis_note",
+          "analyzed_at",
+          "created_at"
+        ],
+        "title": "AuthorProfileOut",
+        "type": "object"
+      },
+      "AuthorProfilePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "corrections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CorrectionIn"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrections"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "style_guide_md": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Guide Md"
+          }
+        },
+        "title": "AuthorProfilePatch",
+        "type": "object"
+      },
       "BackupOut": {
         "properties": {
           "byte_size": {
@@ -460,6 +680,30 @@
         "title": "BackupOut",
         "type": "object"
       },
+      "Body_add_sample_file_api_voice_profiles__profile_id__samples_file_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "rights_basis": {
+            "default": "own_writing",
+            "title": "Rights Basis",
+            "type": "string"
+          },
+          "rights_confirmed": {
+            "default": false,
+            "title": "Rights Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_add_sample_file_api_voice_profiles__profile_id__samples_file_post",
+        "type": "object"
+      },
       "Body_create_import_api_imports_post": {
         "properties": {
           "file": {
@@ -483,6 +727,44 @@
           "file"
         ],
         "title": "Body_create_import_api_imports_post",
+        "type": "object"
+      },
+      "Body_import_to_book_api_projects__project_id__knowledge_sources_post": {
+        "properties": {
+          "allow_duplicate": {
+            "default": false,
+            "title": "Allow Duplicate",
+            "type": "boolean"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_to_book_api_projects__project_id__knowledge_sources_post",
+        "type": "object"
+      },
+      "Body_import_to_library_api_knowledge_libraries__library_id__sources_post": {
+        "properties": {
+          "allow_duplicate": {
+            "default": false,
+            "title": "Allow Duplicate",
+            "type": "boolean"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_to_library_api_knowledge_libraries__library_id__sources_post",
         "type": "object"
       },
       "Body_restore_backup_api_backups_restore_post": {
@@ -511,6 +793,46 @@
           "file"
         ],
         "title": "Body_upload_asset_api_projects__project_id__assets_post",
+        "type": "object"
+      },
+      "BookKnowledgeOut": {
+        "properties": {
+          "available_shared": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryOut"
+            },
+            "title": "Available Shared",
+            "type": "array"
+          },
+          "linked": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryOut"
+            },
+            "title": "Linked",
+            "type": "array"
+          },
+          "project_library": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LibraryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usable_source_count": {
+            "title": "Usable Source Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "project_library",
+          "linked",
+          "available_shared",
+          "usable_source_count"
+        ],
+        "title": "BookKnowledgeOut",
         "type": "object"
       },
       "BookOut": {
@@ -971,6 +1293,351 @@
         "title": "ChapterSaveOut",
         "type": "object"
       },
+      "ChunkOut": {
+        "properties": {
+          "heading_path": {
+            "title": "Heading Path",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "heading_path",
+          "locator",
+          "text"
+        ],
+        "title": "ChunkOut",
+        "type": "object"
+      },
+      "CitationOut": {
+        "description": "Bibliographic metadata for one cited source: only fields the author entered or the file states.",
+        "properties": {
+          "DOI": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "URL": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "author": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Author",
+            "type": "array"
+          },
+          "cited_in_chapters": {
+            "title": "Cited In Chapters",
+            "type": "integer"
+          },
+          "id": {
+            "description": "The citation key used in the text, e.g. [@smith2020]",
+            "title": "Id",
+            "type": "string"
+          },
+          "issued": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "author",
+          "issued",
+          "publisher",
+          "URL",
+          "DOI",
+          "source_id",
+          "cited_in_chapters"
+        ],
+        "title": "CitationOut",
+        "type": "object"
+      },
+      "ClaimCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "chapter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "chunk_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Chunk Ids",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ClaimCreate",
+        "type": "object"
+      },
+      "ClaimOut": {
+        "properties": {
+          "chapter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "chapter_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Title"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lifecycle": {
+            "enum": [
+              "proposed",
+              "in_text",
+              "discarded"
+            ],
+            "title": "Lifecycle",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "origin": {
+            "enum": [
+              "ai_generated",
+              "author"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "review_state": {
+            "enum": [
+              "needs_review",
+              "verified",
+              "disputed"
+            ],
+            "title": "Review State",
+            "type": "string"
+          },
+          "support_status": {
+            "enum": [
+              "supported",
+              "not_located",
+              "unverified"
+            ],
+            "title": "Support Status",
+            "type": "string"
+          },
+          "supports": {
+            "items": {
+              "$ref": "#/components/schemas/SupportOut"
+            },
+            "title": "Supports",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "chapter_id",
+          "chapter_title",
+          "proposal_id",
+          "text",
+          "origin",
+          "lifecycle",
+          "review_state",
+          "support_status",
+          "note",
+          "supports",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ClaimOut",
+        "type": "object"
+      },
+      "ClaimPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "add_chunk_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Add Chunk Ids",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "remove_support_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Remove Support Ids",
+            "type": "array"
+          },
+          "review_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "needs_review",
+                  "verified",
+                  "disputed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review State"
+          }
+        },
+        "title": "ClaimPatch",
+        "type": "object"
+      },
       "CompareOut": {
         "properties": {
           "added_lines": {
@@ -1038,6 +1705,71 @@
           "granted_at"
         ],
         "title": "ConsentOut",
+        "type": "object"
+      },
+      "CorrectionIn": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "After",
+            "type": "string"
+          },
+          "before": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Before",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "before",
+          "after"
+        ],
+        "title": "CorrectionIn",
+        "type": "object"
+      },
+      "CorrectionOut": {
+        "properties": {
+          "after": {
+            "title": "After",
+            "type": "string"
+          },
+          "before": {
+            "title": "Before",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "before",
+          "after",
+          "note"
+        ],
+        "title": "CorrectionOut",
         "type": "object"
       },
       "DiffRow": {
@@ -1161,6 +1893,33 @@
         "title": "DraftOut",
         "type": "object"
       },
+      "DuplicateOut": {
+        "properties": {
+          "reason": {
+            "enum": [
+              "same_file",
+              "same_text"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "title",
+          "reason"
+        ],
+        "title": "DuplicateOut",
+        "type": "object"
+      },
       "EstimateOut": {
         "properties": {
           "basis": {
@@ -1213,6 +1972,12 @@
             "title": "Input Tokens",
             "type": "integer"
           },
+          "interview_answers": {
+            "default": 0,
+            "description": "Interview answers that would be sent",
+            "title": "Interview Answers",
+            "type": "integer"
+          },
           "is_estimate": {
             "title": "Is Estimate",
             "type": "boolean"
@@ -1236,6 +2001,12 @@
           "provider_local": {
             "title": "Provider Local",
             "type": "boolean"
+          },
+          "source_passages": {
+            "default": 0,
+            "description": "Passages from the book's sources that would be sent",
+            "title": "Source Passages",
+            "type": "integer"
           }
         },
         "required": [
@@ -1719,6 +2490,128 @@
         "title": "ImportPreviewOut",
         "type": "object"
       },
+      "InterviewAnswerOut": {
+        "properties": {
+          "answer_text": {
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "answered_at": {
+            "title": "Answered At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Id"
+          }
+        },
+        "required": [
+          "id",
+          "answer_text",
+          "answered_at",
+          "supersedes_id"
+        ],
+        "title": "InterviewAnswerOut",
+        "type": "object"
+      },
+      "InterviewOut": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewQuestionOut"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "project_id",
+          "title",
+          "questions",
+          "answered"
+        ],
+        "title": "InterviewOut",
+        "type": "object"
+      },
+      "InterviewQuestionOut": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewAnswerOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewAnswerOut"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "bank",
+              "author"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "prompt",
+          "origin",
+          "answer",
+          "history"
+        ],
+        "title": "InterviewQuestionOut",
+        "type": "object"
+      },
       "JobLogOut": {
         "properties": {
           "level": {
@@ -2001,6 +2894,138 @@
           "api_key"
         ],
         "title": "KeyIn",
+        "type": "object"
+      },
+      "LibraryCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "LibraryCreate",
+        "type": "object"
+      },
+      "LibraryOut": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "linked_project_ids": {
+            "description": "Books that opted in (shared libraries only)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Linked Project Ids",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "scope": {
+            "enum": [
+              "project",
+              "shared"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "source_count": {
+            "title": "Source Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "project_id",
+          "description",
+          "source_count",
+          "linked_project_ids",
+          "created_at"
+        ],
+        "title": "LibraryOut",
+        "type": "object"
+      },
+      "LibraryPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "LibraryPatch",
         "type": "object"
       },
       "ManualModelIn": {
@@ -3194,6 +4219,22 @@
         "title": "ProviderPatch",
         "type": "object"
       },
+      "QuestionCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "prompt": {
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "QuestionCreate",
+        "type": "object"
+      },
       "RestoreIn": {
         "additionalProperties": false,
         "properties": {
@@ -3231,6 +4272,11 @@
             "title": "Chapters",
             "type": "integer"
           },
+          "claims": {
+            "default": 0,
+            "title": "Claims",
+            "type": "integer"
+          },
           "project": {
             "$ref": "#/components/schemas/ProjectOut"
           },
@@ -3240,6 +4286,11 @@
           },
           "revisions": {
             "title": "Revisions",
+            "type": "integer"
+          },
+          "sources": {
+            "default": 0,
+            "title": "Sources",
             "type": "integer"
           },
           "warnings": {
@@ -3600,6 +4651,113 @@
         "title": "RouteOut",
         "type": "object"
       },
+      "SearchHitOut": {
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "citation_key": {
+            "title": "Citation Key",
+            "type": "string"
+          },
+          "heading_path": {
+            "title": "Heading Path",
+            "type": "string"
+          },
+          "locator": {
+            "title": "Locator",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "snippet": {
+            "description": "Plain text segments; hit=true marks matched words",
+            "items": {
+              "$ref": "#/components/schemas/SnippetPart"
+            },
+            "title": "Snippet",
+            "type": "array"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_title": {
+            "title": "Source Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "source_id",
+          "source_title",
+          "citation_key",
+          "locator",
+          "heading_path",
+          "snippet",
+          "reasons",
+          "score"
+        ],
+        "title": "SearchHitOut",
+        "type": "object"
+      },
+      "SearchOut": {
+        "properties": {
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHitOut"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "mode": {
+            "description": "all = every word matched; any = some words matched",
+            "enum": [
+              "all",
+              "any"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "searched_sources": {
+            "title": "Searched Sources",
+            "type": "integer"
+          },
+          "semantic": {
+            "const": "unavailable",
+            "default": "unavailable",
+            "title": "Semantic",
+            "type": "string"
+          },
+          "semantic_note": {
+            "title": "Semantic Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "mode",
+          "hits",
+          "searched_sources",
+          "semantic_note"
+        ],
+        "title": "SearchOut",
+        "type": "object"
+      },
       "SecretStoreOut": {
         "properties": {
           "backend": {
@@ -3633,6 +4791,507 @@
           "warning"
         ],
         "title": "SecretStoreOut",
+        "type": "object"
+      },
+      "SnippetPart": {
+        "properties": {
+          "hit": {
+            "title": "Hit",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "hit"
+        ],
+        "title": "SnippetPart",
+        "type": "object"
+      },
+      "SourceImportOut": {
+        "properties": {
+          "duplicate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DuplicateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "SourceImportOut",
+        "type": "object"
+      },
+      "SourceOut": {
+        "properties": {
+          "authors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Authors",
+            "type": "array"
+          },
+          "byte_size": {
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "citation_key": {
+            "title": "Citation Key",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "file_sha256": {
+            "title": "File Sha256",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "indexed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indexed At"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "library_id": {
+            "title": "Library Id",
+            "type": "string"
+          },
+          "library_name": {
+            "title": "Library Name",
+            "type": "string"
+          },
+          "original_name": {
+            "title": "Original Name",
+            "type": "string"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "removed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed At"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "indexed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "title_origin": {
+            "description": "file_metadata | file_name | author: where the title came from",
+            "title": "Title Origin",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/WarningOut"
+            },
+            "title": "Warnings",
+            "type": "array"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "id",
+          "library_id",
+          "library_name",
+          "kind",
+          "title",
+          "title_origin",
+          "citation_key",
+          "original_name",
+          "file_sha256",
+          "byte_size",
+          "tags",
+          "enabled",
+          "status",
+          "error",
+          "warnings",
+          "chunk_count",
+          "word_count",
+          "page_count",
+          "authors",
+          "year",
+          "publisher",
+          "url",
+          "doi",
+          "created_at",
+          "indexed_at",
+          "removed_at"
+        ],
+        "title": "SourceOut",
+        "type": "object"
+      },
+      "SourcePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "authors": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 120,
+                  "minLength": 1,
+                  "pattern": "^[^\\r\\n]*$",
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "pattern": "^[^\\r\\n]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "pattern": "^[^\\r\\n,]+$",
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "pattern": "^[^\\r\\n]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "title": "SourcePatch",
+        "type": "object"
+      },
+      "SourceTextOut": {
+        "properties": {
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceOut"
+          }
+        },
+        "required": [
+          "source",
+          "chunks"
+        ],
+        "title": "SourceTextOut",
+        "type": "object"
+      },
+      "SupportOut": {
+        "properties": {
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "citation_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Key"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_answer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Answer Id"
+          },
+          "kind": {
+            "enum": [
+              "source",
+              "interview"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "located": {
+            "title": "Located",
+            "type": "boolean"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source_removed": {
+            "title": "Source Removed",
+            "type": "boolean"
+          },
+          "source_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Title"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "source_id",
+          "source_title",
+          "source_removed",
+          "chunk_id",
+          "interview_answer_id",
+          "citation_key",
+          "locator",
+          "quote",
+          "located"
+        ],
+        "title": "SupportOut",
         "type": "object"
       },
       "SystemInfoOut": {
@@ -3861,6 +5520,87 @@
           "unknown_cost_calls"
         ],
         "title": "UsageTotalOut",
+        "type": "object"
+      },
+      "VoiceSampleIn": {
+        "additionalProperties": false,
+        "properties": {
+          "rights_basis": {
+            "default": "own_writing",
+            "enum": [
+              "own_writing",
+              "licensed"
+            ],
+            "title": "Rights Basis",
+            "type": "string"
+          },
+          "rights_confirmed": {
+            "description": "Must be true: this is my own writing or I have the rights to use it",
+            "title": "Rights Confirmed",
+            "type": "boolean"
+          },
+          "text": {
+            "maxLength": 400000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "text",
+          "rights_confirmed"
+        ],
+        "title": "VoiceSampleIn",
+        "type": "object"
+      },
+      "VoiceSampleOut": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "rights_basis": {
+            "enum": [
+              "own_writing",
+              "licensed"
+            ],
+            "title": "Rights Basis",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "word_count",
+          "rights_basis",
+          "excerpt",
+          "created_at"
+        ],
+        "title": "VoiceSampleOut",
         "type": "object"
       },
       "WarningOut": {
@@ -7153,6 +8893,1069 @@
         ]
       }
     },
+    "/api/knowledge/libraries": {
+      "get": {
+        "operationId": "list_shared_api_knowledge_libraries_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LibraryOut"
+                  },
+                  "title": "Response List Shared Api Knowledge Libraries Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "List Shared",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "post": {
+        "operationId": "create_shared_api_knowledge_libraries_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Create Shared",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/libraries/{library_id}": {
+      "patch": {
+        "operationId": "patch_library_api_knowledge_libraries__library_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Patch Library",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/libraries/{library_id}/search": {
+      "get": {
+        "operationId": "search_library_api_knowledge_libraries__library_id__search_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Search Library",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/libraries/{library_id}/sources": {
+      "get": {
+        "operationId": "library_sources_api_knowledge_libraries__library_id__sources_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_removed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Removed",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceOut"
+                  },
+                  "title": "Response Library Sources Api Knowledge Libraries  Library Id  Sources Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Library Sources",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "post": {
+        "operationId": "import_to_library_api_knowledge_libraries__library_id__sources_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_to_library_api_knowledge_libraries__library_id__sources_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceImportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Import To Library",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/sources/{source_id}": {
+      "delete": {
+        "operationId": "remove_source_api_knowledge_sources__source_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Remove Source",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "get": {
+        "operationId": "get_source_api_knowledge_sources__source_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Get Source",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_source_api_knowledge_sources__source_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourcePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Patch Source",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/sources/{source_id}/reindex": {
+      "post": {
+        "operationId": "reindex_source_api_knowledge_sources__source_id__reindex_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Reindex Source",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/sources/{source_id}/text": {
+      "get": {
+        "operationId": "source_text_api_knowledge_sources__source_id__text_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceTextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Source Text",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
     "/api/projects": {
       "get": {
         "operationId": "list_projects_api_projects_get",
@@ -10432,6 +13235,435 @@
         ]
       }
     },
+    "/api/projects/{project_id}/citations": {
+      "get": {
+        "operationId": "book_citations_api_projects__project_id__citations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CitationOut"
+                  },
+                  "title": "Response Book Citations Api Projects  Project Id  Citations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Book Citations",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/claims": {
+      "get": {
+        "operationId": "list_claims_api_projects__project_id__claims_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_proposed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Proposed",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "chapter_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chapter Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClaimOut"
+                  },
+                  "title": "Response List Claims Api Projects  Project Id  Claims Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "List Claims",
+        "tags": [
+          "evidence"
+        ]
+      },
+      "post": {
+        "operationId": "create_claim_api_projects__project_id__claims_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Create Claim",
+        "tags": [
+          "evidence"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/claims/{claim_id}": {
+      "patch": {
+        "operationId": "patch_claim_api_projects__project_id__claims__claim_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "title": "Claim Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Patch Claim",
+        "tags": [
+          "evidence"
+        ]
+      }
+    },
     "/api/projects/{project_id}/duplicate": {
       "post": {
         "operationId": "duplicate_project_api_projects__project_id__duplicate_post",
@@ -10907,6 +14139,924 @@
         "summary": "List Imports",
         "tags": [
           "imports"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/interview": {
+      "get": {
+        "operationId": "get_interview_api_projects__project_id__interview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Get Interview",
+        "tags": [
+          "interview"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/interview/questions": {
+      "post": {
+        "operationId": "add_question_api_projects__project_id__interview_questions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Add Question",
+        "tags": [
+          "interview"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/interview/questions/{question_id}/answer": {
+      "put": {
+        "operationId": "answer_api_projects__project_id__interview_questions__question_id__answer_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Answer",
+        "tags": [
+          "interview"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/knowledge": {
+      "get": {
+        "operationId": "book_knowledge_api_projects__project_id__knowledge_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookKnowledgeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Book Knowledge",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/knowledge/links/{library_id}": {
+      "delete": {
+        "operationId": "unlink_library_api_projects__project_id__knowledge_links__library_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookKnowledgeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Unlink Library",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "put": {
+        "operationId": "link_library_api_projects__project_id__knowledge_links__library_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookKnowledgeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Link Library",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/knowledge/search": {
+      "get": {
+        "operationId": "search_book_api_projects__project_id__knowledge_search_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Search Book",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/knowledge/sources": {
+      "get": {
+        "operationId": "book_sources_api_projects__project_id__knowledge_sources_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_removed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Removed",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceOut"
+                  },
+                  "title": "Response Book Sources Api Projects  Project Id  Knowledge Sources Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Book Sources",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "post": {
+        "operationId": "import_to_book_api_projects__project_id__knowledge_sources_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_to_book_api_projects__project_id__knowledge_sources_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceImportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Import To Book",
+        "tags": [
+          "knowledge"
         ]
       }
     },
@@ -11714,6 +15864,677 @@
         "summary": "System Info",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/voice/profiles": {
+      "get": {
+        "operationId": "list_profiles_api_voice_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuthorProfileOut"
+                  },
+                  "title": "Response List Profiles Api Voice Profiles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "List Profiles",
+        "tags": [
+          "voice"
+        ]
+      },
+      "post": {
+        "operationId": "create_profile_api_voice_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorProfileCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Create Profile",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/voice/profiles/{profile_id}": {
+      "get": {
+        "operationId": "get_profile_api_voice_profiles__profile_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Get Profile",
+        "tags": [
+          "voice"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_profile_api_voice_profiles__profile_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorProfilePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Patch Profile",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/voice/profiles/{profile_id}/samples": {
+      "post": {
+        "operationId": "add_sample_api_voice_profiles__profile_id__samples_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceSampleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Add Sample",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/voice/profiles/{profile_id}/samples/file": {
+      "post": {
+        "operationId": "add_sample_file_api_voice_profiles__profile_id__samples_file_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_sample_file_api_voice_profiles__profile_id__samples_file_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Add Sample File",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/voice/profiles/{profile_id}/samples/{sample_id}": {
+      "delete": {
+        "operationId": "remove_sample_api_voice_profiles__profile_id__samples__sample_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "title": "Profile Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "title": "Sample Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Remove Sample",
+        "tags": [
+          "voice"
         ]
       }
     }

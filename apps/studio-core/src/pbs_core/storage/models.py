@@ -339,5 +339,5 @@ class RevisionTag(Base):
     )
 
 
-# Phase 03 tables live in their own module but share this metadata.
-from pbs_core.storage import ai_models  # noqa: E402, F401
+# Phase 03 and 04 tables live in their own modules but share this metadata.
+from pbs_core.storage import ai_models, knowledge_models  # noqa: E402, F401

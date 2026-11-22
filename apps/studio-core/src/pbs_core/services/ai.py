@@ -55,7 +55,9 @@ from pbs_core.document import bookmd
 from pbs_core.domain.errors import ConflictError, NotFoundError, ValidationFailedError
 from pbs_core.domain.ids import is_ulid
 from pbs_core.jobs import prompts
+from pbs_core.jobs.execute import retrieval_query
 from pbs_core.jobs.runner import add_log
+from pbs_core.knowledge import retrieval
 from pbs_core.providers import registry
 from pbs_core.providers.base import ProviderError
 from pbs_core.providers.egress import (
@@ -65,7 +67,7 @@ from pbs_core.providers.egress import (
     normalize_loopback_url,
 )
 from pbs_core.security.secrets import SecretStoreError, credential_ref
-from pbs_core.services import activity, chapters, costs
+from pbs_core.services import activity, chapters, costs, evidence
 from pbs_core.services.projects import require_active, require_project
 from pbs_core.storage.ai_models import (
     TASKS,
@@ -79,6 +81,7 @@ from pbs_core.storage.ai_models import (
     TaskRoute,
     UsageRecord,
 )
+from pbs_core.storage.knowledge_models import AuthorProfile
 from pbs_core.storage.models import AppSetting, Chapter, ChapterDraft, ChapterRevision, Project
 
 log = structlog.get_logger(__name__)
@@ -630,6 +633,8 @@ class _Plan:
     estimate: dict[str, Any]
     clipped: bool
     blocked: str | None
+    passages: int
+    answers: int
 
 
 def _plan(ctx: AppContext, s: Session, project_id: str, data: AiRequestIn) -> _Plan:
@@ -697,6 +702,22 @@ def _plan(ctx: AppContext, s: Session, project_id: str, data: AiRequestIn) -> _P
         max_out = info.max_output_tokens
 
     context = costs.clip_context(text, sel_start, sel_end, limit)
+    # Preview of the knowledge the job will use (it is chosen again when the job runs).
+    found = retrieval.retrieve(
+        s,
+        project_id,
+        retrieval_query(data.instruction, selection, context, chapter.title),
+        use_sources=data.use_sources,
+        use_interview=data.use_interview,
+    )
+    voice = None
+    if data.voice_profile_id:
+        profile = s.get(AuthorProfile, data.voice_profile_id) if is_ulid(data.voice_profile_id) else None
+        if profile is None:
+            raise NotFoundError("Author voice profile not found.")
+        if not profile.style_guide_md.strip():
+            raise ConflictError("This voice profile has no style guide yet. Add writing samples first.")
+        voice = {"name": profile.name, "guide": profile.style_guide_md}
     built = prompts.build(
         data.task,
         instruction=data.instruction,
@@ -706,6 +727,9 @@ def _plan(ctx: AppContext, s: Session, project_id: str, data: AiRequestIn) -> _P
         selection=selection,
         target_language=data.target_language,
         target_words=data.target_words,
+        sources=[r for r in found.refs.values() if r.kind == "source"],
+        answers=[r for r in found.refs.values() if r.kind == "interview"],
+        voice=voice,
     )
     estimate = costs.estimate(s, provider, model, len(built.system) + len(built.user), max_out)
 
@@ -732,6 +756,8 @@ def _plan(ctx: AppContext, s: Session, project_id: str, data: AiRequestIn) -> _P
         estimate=estimate,
         clipped=len(context) < len(text),
         blocked=blocked,
+        passages=len(found.passages),
+        answers=len(found.answers),
     )
 
 
@@ -753,6 +779,8 @@ def estimate(ctx: AppContext, project_id: str, data: AiRequestIn) -> EstimateOut
             cost_note=str(e["cost_note"]),
             context_clipped=plan.clipped,
             blocked_reason=plan.blocked,
+            source_passages=plan.passages,
+            interview_answers=plan.answers,
         )
 
 
@@ -777,6 +805,9 @@ def enqueue(ctx: AppContext, project_id: str, data: AiRequestIn) -> JobOut:
             "target_language": data.target_language,
             "target_words": data.target_words,
             "max_context_chars": costs.MAX_CONTEXT_CHARS,
+            "use_sources": data.use_sources,
+            "use_interview": data.use_interview,
+            "voice_profile_id": data.voice_profile_id,
         }
         job = Job(
             id=ctx.ids.new(),
@@ -1061,6 +1092,7 @@ def accept_proposal(ctx: AppContext, project_id: str, proposal_id: str, data: Ac
                 s, ctx, chapter, source, origin=origin, note=note[:500], accepted_proposal_id=p.id
             )
             p.status, p.decided_at, p.accepted_revision_id = "accepted", ctx.clock.iso(), revision.id
+            evidence.on_proposal_decided(s, ctx, p.id, accepted=True, revision_id=revision.id)
             activity.record(
                 s,
                 ctx,
@@ -1085,6 +1117,7 @@ def reject_proposal(ctx: AppContext, project_id: str, proposal_id: str) -> Propo
         if p.status != "pending":
             raise ConflictError(f"This suggestion was already {p.status}.")
         p.status, p.decided_at = "rejected", ctx.clock.iso()
+        evidence.on_proposal_decided(s, ctx, p.id, accepted=False, revision_id=None)
         s.flush()
         return _proposal_out(s, p)
 

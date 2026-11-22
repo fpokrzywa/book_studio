@@ -24,6 +24,7 @@ from pbs_core.providers.base import (
     ProviderError,
     Usage,
 )
+from pbs_core.providers.mock_knowledge import with_knowledge
 
 MODELS = [
     ModelDesc(
@@ -77,6 +78,7 @@ class MockAdapter:
                 f"[Test model output, not AI] This paragraph was produced by the built-in test model for: "
                 f"{instruction[:120].rstrip('.')}. Reference {key}."
             )
+            text = with_knowledge(text, prompt)
         delay = 0.1 if "[[mock:slow]]" in prompt else 0.0
         out: list[str] = []
         for word in re.split(r"(\s+)", text):

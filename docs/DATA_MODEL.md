@@ -146,6 +146,25 @@ Indexes: `(status, updated_at)`. Library search (as built) is a case-folded subs
 - `chapter_revision.accepted_proposal_id` has a partial UNIQUE index, so no proposal is applied twice.
 - Secrets: never in the DB.
 
+### 2.3a Phase 04 tables as built (migration `0005`, ADR-0005)
+
+- **`knowledge_library`**: `scope (project|shared)`, `project_id` (set only for `project`), name, description, `archived_at`.
+- **`library_link (project_id, library_id)`**: a book's opt-in to a shared library.
+- **`source`**:
+  - file and identity: `library_id, original_file_id` (immutable original), `kind`, `title`, `title_origin` (file_metadata | file_name | author);
+  - citation: `citation_key`, `key_scope` (book id or `shared`), with `UNIQUE(key_scope, citation_key)`;
+  - hashes: `file_sha256`, `text_sha256`, with a partial unique index on `(library_id, file_sha256)` for live sources;
+  - state: `tags_json, enabled, status (pending|indexed|failed), error, warnings_json`, counts, `page_count`, `removed_at` (tombstone);
+  - author-entered bibliography: `authors_json, year, publisher, url, doi`.
+- **`source_chunk`**: `seq, heading_path, page_start/end, para_start/end, text`.
+- **`source_chunk_fts`**: an FTS5 virtual table (`text, heading, title, chunk_id, source_id`). It is raw SQL in the migration, excluded from the ORM drift check, and rebuilt on restore.
+- **`claim`**: `origin (ai_generated|author), lifecycle (proposed|in_text|discarded), review_state (needs_review|verified|disputed), support_status (supported|not_located|unverified)`, with links to proposal, chapter and revision.
+- **`claim_support`**: `kind (source|interview)`, source/chunk/answer links, plus a copied `quote, citation_key, locator, located, score`.
+- **`author_profile`**: `style_guide_md, guide_edited, metrics_json, examples_json, corrections_json`.
+- **`voice_sample`**: `rights_confirmed` (CHECK = 1), `rights_basis` (own_writing|licensed), `UNIQUE(profile_id, text_sha256)`.
+- **`interview_session`, `interview_question`** (`origin bank|author`) and **`interview_answer`** (immutable; `supersedes_id` chains versions).
+- **Not built:** `chunk_embedding` (semantic search) and a separate `citation` table. Keys live on `source`, and `/projects/{id}/citations` exports metadata.
+
 ### 2.4 Phase 04–08 tables (design intent)
 
 - **Knowledge:** `knowledge_library (id, scope project|shared, project_id nullable, name)`, `project_library_link`, `knowledge_source (id, library_id, kind file|url|interview, title, uri, original_file_id, retrieved_at, content_sha256, enabled, tags_json, index_status)`, `source_chunk (id, source_id, ordinal, text, heading_path, page_from, page_to, char_start, char_end, sha256)` (immutable), `source_chunk_fts` (FTS5, external content), `chunk_embedding (chunk_id, model, dim, vector BLOB)` (optional).

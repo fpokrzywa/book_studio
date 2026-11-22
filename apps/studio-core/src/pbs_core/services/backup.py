@@ -1,7 +1,8 @@
 """Project backup (ZIP, manifest/1) and restore-as-new-project.
 
 Backup contents: every project-scoped row (JSONL per table), the project's images, and the preserved
-originals of its imports, each listed in manifest.json with SHA-256 and size.
+originals of its imports and knowledge sources, each listed in manifest.json with SHA-256 and size.
+Knowledge, evidence and interview rows: services/backup_knowledge.py.
 
 Restore never overwrites anything. It validates the archive (size limits, safe names, manifest
 schema, checksums, schema revision), then recreates the project under NEW IDs, remapping every
@@ -29,7 +30,7 @@ from pbs_core.contracts import BackupOut, RestoreOut, WarningOut
 from pbs_core.domain.errors import NotFoundError, ValidationFailedError
 from pbs_core.domain.ids import is_ulid
 from pbs_core.security.archive import ArchiveLimits, UnsafeArchiveError, open_checked, read_capped
-from pbs_core.services import activity, projects
+from pbs_core.services import activity, backup_knowledge, projects
 from pbs_core.storage.backup_manifest import BackupManifest, ManifestFile
 from pbs_core.storage.migrate import alembic_config
 from pbs_core.storage.models import (
@@ -74,6 +75,8 @@ def create_backup(ctx: AppContext, project_id: str) -> BackupOut:
         import_rows = s.scalars(select(ImportRun).where(ImportRun.project_id == pid)).all()
         original_rows = [o for o in (s.get(OriginalFile, r.original_file_id) for r in import_rows) if o is not None]
         activity_rows = s.scalars(select(ActivityEvent).where(ActivityEvent.project_id == pid)).all()
+        knowledge_tables, knowledge_originals = backup_knowledge.collect(s, pid, _row)
+        original_rows = original_rows + knowledge_originals
         tables: dict[str, list[dict[str, Any]]] = {
             "project": [_row(project)],
             "chapter": [_row(x) for x in chapter_rows],
@@ -86,6 +89,7 @@ def create_backup(ctx: AppContext, project_id: str) -> BackupOut:
             "import_run": [_row(x) for x in import_rows],
             "original_file": [_row(x) for x in {o.id: o for o in original_rows}.values()],
             "activity_event": [_row(x) for x in activity_rows],
+            **knowledge_tables,
         }
         files: list[tuple[str, bytes]] = [(f"data/{name}.jsonl", _jsonl(rows)) for name, rows in tables.items()]
         for a in asset_rows:
@@ -289,6 +293,7 @@ def restore_backup(ctx: AppContext, data: bytes) -> RestoreOut:
             s.flush()
 
             revision_map: dict[str, str] = {}
+            proposal_map: dict[str, str] = {}
             revision_rows = sorted(
                 _rows(contents, "chapter_revision"), key=lambda r: (r["chapter_id"], r["revision_no"])
             )
@@ -307,6 +312,14 @@ def restore_backup(ctx: AppContext, data: bytes) -> RestoreOut:
                     parent_revision_id=revision_map.get(row.get("parent_revision_id") or ""),
                     restored_from_revision_id=revision_map.get(row.get("restored_from_revision_id") or ""),
                     import_run_id=import_map.get(row.get("import_run_id") or ""),
+                    # AI-origin revisions must name the proposal they came from, and each proposal can be
+                    # applied once. Proposals and jobs are not part of a backup, so the copy gets a new,
+                    # consistent reference instead of colliding with the original book's revision.
+                    accepted_proposal_id=(
+                        proposal_map.setdefault(row["accepted_proposal_id"], new())
+                        if row.get("accepted_proposal_id")
+                        else None
+                    ),
                     bdm_json=json.dumps(bdm, ensure_ascii=False),
                 )
                 s.add(ChapterRevision(**kw))
@@ -340,6 +353,10 @@ def restore_backup(ctx: AppContext, data: bytes) -> RestoreOut:
                     kw = _model_kwargs(ChapterDraft, row)
                     kw.update(chapter_id=chapter_map[row["chapter_id"]], project_id=new_pid)
                     s.add(ChapterDraft(**kw))
+            knowledge_counts = backup_knowledge.restore(
+                s, ctx, lambda t: _rows(contents, t), _model_kwargs, new_pid=new_pid, original_map=original_map,
+                chapter_map=chapter_map, revision_map=revision_map, warnings=warnings,
+            )  # fmt: skip
             ref_map = {**chapter_map, **revision_map, **import_map, src_project["id"]: new_pid}
             for row in _rows(contents, "activity_event"):
                 kw = _model_kwargs(ActivityEvent, row)
@@ -363,5 +380,7 @@ def restore_backup(ctx: AppContext, data: bytes) -> RestoreOut:
         chapters=counts[0],
         revisions=counts[1],
         assets=counts[2],
+        sources=knowledge_counts["sources"],
+        claims=knowledge_counts["claims"],
         warnings=warnings,
     )

@@ -147,6 +147,10 @@ function editorApi(extra: Record<string, Handler> = {}) {
     "GET /api/ai/providers": () => ({ json: [ollama] }),
     "GET /api/ai/routes": () => ({ json: [] }),
     "GET /api/ai/jobs": () => ({ json: [] }),
+    [`GET /api/projects/${P}/knowledge`]: () => ({
+      json: { project_library: null, linked: [], available_shared: [], usable_source_count: 0 },
+    }),
+    "GET /api/voice/profiles": () => ({ json: [] }),
     [`POST /api/projects/${P}/ai/estimate`]: () => ({ json: estimate }),
     [`POST /api/projects/${P}/ai/jobs`]: () => {
       proposals = [proposal];
@@ -373,5 +377,63 @@ describe("AI jobs status center", () => {
     expect(await axeViolations(container)).toEqual([]);
     await user.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/api/ai/jobs/J1/retry")).toBe(true));
+  });
+});
+
+describe("Sources on a suggestion", () => {
+  it("shows the passages behind each paragraph, flags unverified ones and removed citations", async () => {
+    const cited = {
+      ...proposal,
+      payload_md: "Bolts go in a spiral [@torque-handbook, para. 2].\n\nA paragraph with no source.",
+      provenance: {
+        ...proposal.provenance,
+        knowledge: {
+          dropped_labels: ["S9"],
+          paragraphs: [
+            {
+              index: 0,
+              preview: "Bolts go in a spiral.",
+              status: "supported",
+              dropped_labels: ["S9"],
+              supports: [
+                {
+                  label: "S1",
+                  kind: "source",
+                  title: "torque-handbook",
+                  quote: "Cylinder head bolts are tightened in a spiral pattern.",
+                  located: true,
+                  source_id: "SRC1",
+                  chunk_id: "CH1",
+                  citation_key: "torque-handbook",
+                  locator: "para. 2",
+                },
+              ],
+            },
+            {
+              index: 1,
+              preview: "A paragraph with no source.",
+              status: "unverified",
+              supports: [],
+              dropped_labels: [],
+            },
+          ],
+        },
+      },
+    };
+    editorApi({ [`GET /api/projects/${P}/proposals`]: () => ({ json: [cited] }) });
+    const { container } = renderRoutes(routes, `/projects/${P}/chapters/${C}`);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Review" }));
+    const box = await screen.findByRole("region", { name: "Sources for each paragraph" });
+    expect(within(box).getByRole("link", { name: "torque-handbook, para. 2" })).toHaveAttribute(
+      "href",
+      "/knowledge/sources/SRC1?passage=CH1",
+    );
+    expect(
+      within(box).getByText("Cylinder head bolts are tightened in a spiral pattern."),
+    ).toBeInTheDocument();
+    expect(within(box).getByText(/Unverified: no source supports this paragraph/)).toBeInTheDocument();
+    expect(within(box).getByText(/cited passages it was never given \(S9\)/)).toBeInTheDocument();
+    expect(await axeViolations(container)).toEqual([]);
   });
 });

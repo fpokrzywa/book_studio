@@ -93,6 +93,31 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
 - **Prompt assembly:** manuscript text sits in a random-tag `<pbs-data-…>` envelope, and the system prompt says envelope content is never instructions. Models have no tools. Structured output is schema-validated. Output is only ever a proposal.
 - **Scope:** one chapter of one project per request, clipped to 48,000 characters.
 
+## 7c. Phase 04 controls as built (details: ADR-0005)
+
+- **Source text is untrusted data.**
+  - Imports reuse the Phase 02 safe importers (archive, XXE, encrypted and scanned checks; HTML reduced to structure with script, handlers and `javascript:` links dropped).
+  - Every passage, interview answer and writing sample is sent in its own random-tag envelope, and any envelope-like text inside it is neutralised.
+  - The system prompt forbids following embedded instructions and inventing titles, authors, pages, URLs or DOIs.
+- **Citations can only point at what was sent.**
+  - Labels the model emits for passages it was not given are dropped and reported.
+  - Cited sentences are checked against the passage and flagged when not located.
+  - BookMD keys come from the source record, never from model text.
+- **Search output is plain text segments**, not HTML; the UI renders source text as text. FTS query syntax cannot be injected because user words are quoted tokens.
+- **Scope.**
+  - A generation can use only enabled, indexed, not-removed sources of the book's own libraries or shared libraries it opted into.
+  - Disabling a source takes effect at the next run.
+  - Author-added evidence is refused for passages outside the book's sources.
+- **The author's own words.**
+  - Interview answers are immutable (DB triggers; edits are new versions).
+  - Voice samples require an explicit rights confirmation (API plus DB CHECK).
+  - Prompts forbid inventing personal experiences.
+- **Tests:** a malicious source (`fixtures/knowledge/malicious-source.html`) and a plain-text source with forged envelopes are run through the test model, including a simulated compromised model that repeats the injected text. Assertions:
+  - the injected citation is dropped;
+  - no invented key is cited;
+  - nothing outside the proposal changes (chapter, privacy mode, providers, sources);
+  - the preview escapes raw HTML.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

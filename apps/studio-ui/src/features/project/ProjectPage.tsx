@@ -153,6 +153,23 @@ function ProjectView({ project }: { project: Project }) {
       <div className="two-col">
         <ManuscriptTree project={project} />
         <div className="stack">
+          <section className="panel" aria-labelledby="project-research">
+            <h2 id="project-research">Research and evidence</h2>
+            <ul className="link-list">
+              <li>
+                <Link to={`/projects/${project.id}/knowledge`}>Sources</Link>{" "}
+                <span className="muted">reference files AI can quote and cite</span>
+              </li>
+              <li>
+                <Link to={`/projects/${project.id}/evidence`}>Evidence ledger</Link>{" "}
+                <span className="muted">claims and the exact passages behind them</span>
+              </li>
+              <li>
+                <Link to={`/projects/${project.id}/interview`}>Interview</Link>{" "}
+                <span className="muted">your own stories, in your own words</span>
+              </li>
+            </ul>
+          </section>
           <ExportsSection project={project} />
           <BackupSection project={project} />
           <section className="panel" aria-labelledby="project-activity">

@@ -96,7 +96,6 @@ def test_steps_06_07_15_draft_review_accept_with_zero_egress(workspace: Path, ne
 
 
 PENDING = [
-    ("04", "ingest knowledge sources (manuscript import is covered in test_acceptance_phase02)", "04"),
     ("05", "brief + outline generation with mock provider", "05"),
     ("11", "export EPUB, DOCX, PDF (Markdown and HTML exports are covered)", "07"),
     ("12", "validate exports (preflight)", "07"),
@@ -108,3 +107,15 @@ PENDING = [
 @pytest.mark.xfail(strict=True, reason="not implemented yet; owned by a later phase")
 def test_pending_golden_steps(step: str, what: str, phase: str) -> None:
     pytest.fail(f"E2E-GOLDEN-01 step {step} ({what}) arrives in Phase {phase}")
+
+
+def test_step_04_ingest_knowledge_sources(client: TestClient) -> None:
+    """04: a source is imported, indexed with provenance, searchable by exact passage and removable."""
+    from tests.test_knowledge import HANDBOOK, upload
+
+    p = client.post("/api/projects", json={"title": "The Quiet Engine", "project_type": "technical"}).json()
+    src = upload(client, p["id"], "torque-handbook.md", HANDBOOK).json()["source"]
+    hit = client.get(f"/api/projects/{p['id']}/knowledge/search", params={"q": "spiral pattern"}).json()["hits"][0]
+    assert hit["citation_key"] == src["citation_key"] and hit["locator"].startswith("para")
+    client.delete(f"/api/knowledge/sources/{src['id']}")
+    assert client.get(f"/api/projects/{p['id']}/knowledge/search", params={"q": "spiral"}).json()["hits"] == []

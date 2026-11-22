@@ -18,7 +18,7 @@ def test_fresh_workspace_migrates_to_head_without_snapshot(workspace: Path) -> N
     ctx = build_context(make_settings(workspace))
     try:
         assert ctx.migration.from_revision is None
-        assert ctx.schema_revision == head_revision() == "0004"
+        assert ctx.schema_revision == head_revision() == "0005"
         assert ctx.migration.snapshot_path is None
     finally:
         ctx.close()
@@ -66,7 +66,7 @@ def test_upgrade_from_0001_preserves_content_and_snapshots(workspace: Path) -> N
 
     ctx = build_context(make_settings(workspace))
     try:
-        assert ctx.migration.from_revision == "0001" and ctx.schema_revision == "0004"
+        assert ctx.migration.from_revision == "0001" and ctx.schema_revision == "0005"
         snap = ctx.migration.snapshot_path
         assert snap is not None and snap.exists()
         with sqlite3.connect(snap) as s:  # snapshot holds the pre-migration data
@@ -93,7 +93,9 @@ def test_models_match_migrations(workspace: Path) -> None:
     ctx = build_context(make_settings(workspace))
     try:
         with ctx.db.engine.connect() as conn:
-            diff = compare_metadata(MigrationContext.configure(conn), Base.metadata)
+            # The FTS5 virtual table and its shadow tables are managed by raw SQL, not the ORM.
+            opts = {"include_name": lambda name, type_, parent: not str(name).startswith("source_chunk_fts")}
+            diff = compare_metadata(MigrationContext.configure(conn, opts=opts), Base.metadata)
         assert diff == [], diff
     finally:
         ctx.close()

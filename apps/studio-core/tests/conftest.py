@@ -6,7 +6,7 @@ import ipaddress
 import socket
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +14,9 @@ from fastapi.testclient import TestClient
 from pbs_core.api.app import create_app
 from pbs_core.config import Settings
 from pbs_core.context import AppContext, build_context
+
+if TYPE_CHECKING:
+    from pbs_core.jobs.runner import JobRunner
 
 PORT = 8765
 BASE_URL = f"http://127.0.0.1:{PORT}"
@@ -112,3 +115,29 @@ def save(client: TestClient, project_id: str, chapter_id: str, text: str, expect
         f"/api/projects/{project_id}/chapters/{chapter_id}/content",
         json={"source_md": text, "expected_head_no": expected},
     )
+
+
+@pytest.fixture
+def runner(ctx: AppContext) -> JobRunner:
+    from pbs_core.jobs.runner import JobRunner
+
+    r = JobRunner(ctx, workers=1)
+    ctx.jobs = r
+    return r
+
+
+@pytest.fixture
+def captured(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    from pbs_core.providers.base import GenRequest
+    from pbs_core.providers.mock import MockAdapter
+
+    """Every request the test model receives, so tests can inspect exactly what was sent."""
+    seen: list[GenRequest] = []
+    original = MockAdapter.stream_chat
+
+    def spy(self: MockAdapter, req: GenRequest, on_delta: Any, should_cancel: Any) -> Any:
+        seen.append(req)
+        return original(self, req, on_delta, should_cancel)
+
+    monkeypatch.setattr(MockAdapter, "stream_chat", spy)
+    return seen

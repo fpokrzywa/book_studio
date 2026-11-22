@@ -14,8 +14,10 @@ const WORKING: NavItem[] = [
   { to: "/new", label: "New book" },
   { to: "/import", label: "Import" },
   { to: "/manuscripts", label: "Manuscripts" },
+  { to: "/knowledge", label: "Knowledge" },
   { to: "/jobs", label: "AI jobs" },
   { to: "/ai-settings", label: "AI settings" },
+  { to: "/voice", label: "Author voice" },
   { to: "/activity", label: "Activity" },
   { to: "/help", label: "Help" },
 ];
@@ -23,7 +25,6 @@ const WORKING: NavItem[] = [
 /** Later-phase sections: visible so the roadmap is honest, but not navigable. */
 export const LATER: { label: string; phase: string }[] = [
   { label: "Research", phase: "05" },
-  { label: "Knowledge", phase: "04" },
   { label: "Publishing", phase: "07" },
 ];
 
@@ -45,7 +46,7 @@ export function AppShell() {
             <small>Your books, on this computer</small>
           </NavLink>
           <ul>
-            {WORKING.slice(0, 4).map((item) => (
+            {WORKING.slice(0, 5).map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} end={item.end} className="nav-link">
                   {item.label}
@@ -70,7 +71,7 @@ export function AppShell() {
             Studio
           </p>
           <ul aria-labelledby="studio-label">
-            {WORKING.slice(4).map((item) => (
+            {WORKING.slice(5).map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} className="nav-link">
                   {item.label}

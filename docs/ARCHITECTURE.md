@@ -209,6 +209,16 @@ ProviderAdapter (Protocol)
 ### 7.1 As built in Phase 03
 Adapters (`providers/`): `mock`, `ollama` (REST), `openai` / `groq` / `xai` (official `openai` SDK, Chat Completions), `anthropic` (official SDK), `gemini` (REST). All share one `stream_chat(req, on_delta, should_cancel)` protocol. Structured output is native only when the capability is reported, documented or declared; the reply is always validated. Prices live in `model_price` per provider config and are user-entered. See ADR-0004.
 
+### 7.2 Knowledge layer (Phase 04)
+`pbs_core.knowledge` contains:
+- `extract`: importers to anchored paragraphs and chunks;
+- `search`: FTS5 index and search;
+- `retrieval`: eligible sources and interview answers for a book, at run time;
+- `citations`: marker check, passage locating, rewriting to `[@key, locator]`;
+- `voice`: deterministic style analysis.
+
+`jobs/execute.py` runs retrieval, builds prompts with envelopes, processes citations, and writes the proposal together with its ledger claims in one transaction. See ADR-0005.
+
 ## 8. Frontend architecture
 
 - React 19 + TypeScript (strict) + Vite. React Router (declarative routes). TanStack Query for server state; no global client store unless needed.

@@ -6,12 +6,140 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **03: AI providers, egress gate, keys, routing, costs, durable jobs, review: COMPLETE (pending user review)** |
-| Next phase | 04: Knowledge and evidence |
-| Branch | `phase/03-ai-jobs`, stacked on `phase/02-editor-import-backup` (PR #2), which is stacked on `phase/01-scaffold` (PR #1). Nothing merged yet |
-| Schema | Alembic head `0004` (`0004_ai_jobs`). The dev workspace migrated 0003 → 0004 automatically, with a snapshot |
-| Platforms verified | Windows 11 x64 only. macOS is **not executed** (scripts and Keychain untested) |
+| Current phase | **04: Knowledge sources, search, citations, evidence ledger, author voice, interviews: COMPLETE (pending user review)** |
+| Next phase | 05: Planning (brief, outline, research) |
+| Branch | `phase/04-knowledge`, stacked on `phase/03-ai-jobs` (PR #3), then Phase 02 (PR #2) and Phase 01 (PR #1). Nothing merged yet |
+| Schema | Alembic head `0005` (`0005_knowledge`, includes the FTS5 table). The dev workspace migrated 0004 → 0005 automatically, with a snapshot |
+| Platforms verified | Windows 11 x64 only. macOS is **not executed** |
 | Last updated | 2026-11-22 |
+
+## Phase 04 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 115 files already formatted |
+| mypy `--strict` (86 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken |
+| pytest (Core) | **210 passed, 1 skipped, 4 xfailed**. The skip is the Ollama smoke test (no local Ollama). The xfails are golden steps for Phases 05 and 07. Step 04 now passes |
+| License gate | passed: 94 runtime dependencies (no new dependencies: FTS5 ships with SQLite, and voice analysis uses the standard library) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **29 passed** (7 files; 5 new) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **11 passed** (2 new knowledge specs) |
+
+### Prompt 04 acceptance → evidence
+
+| Acceptance item | Where it is proven |
+|---|---|
+| Imported sources are searchable, cited by exact passage and removable | pytest: `test_import_preserves_original_and_records_anchored_chunks`, `test_pdf_passages_carry_page_numbers` ("p. 3"), `test_search_highlights_exact_passage_with_reasons`, `test_remove_and_reindex`, golden step 04. Playwright `knowledge.spec.ts`: import → search with `<mark>` → open the cited passage (highlighted) → cite → remove → search finds nothing, and the ledger quote shows "source removed". Also checked by hand in the desktop browser pane (highlighted hits with locator and match reasons) |
+| Disabling a source prevents its use in new generations | `test_disabling_a_source_keeps_it_out_of_new_generations`: disabled **after queueing** and **before running** → the prompt has no passage, provenance lists no source, every paragraph is "unverified"; re-enabling restores it. Playwright: "Use for AI" off → "No source passages will be sent" → the card has no source links |
+| A generated paragraph shows supporting sources or an explicit "unverified" flag | `test_generated_paragraphs_show_sources_or_unverified`: per-paragraph `supported` with key, locator and an exact quote found in the source, plus a trailing `unverified` paragraph; the text gets `[@torque-handbook, para. N]`. `test_fabricated_citation_is_dropped_and_flagged`. Vitest "Sources on a suggestion" (links to the passage, "Unverified" flag, removed-citation warning). Playwright |
+| Style rewrite is preview-only until accepted; the original revision stays accessible | `test_style_rewrite_is_preview_only_until_accepted`: the chapter stays at revision 1 until Accept; afterwards `GET …/revisions/1` returns the original text; the proposal shows before/after (replace mode) |
+| Tests cover provenance, injected malicious text, deduplication, backup/restore of citations | provenance (above); injection: `test_malicious_source_text_stays_data`, `test_forged_envelope_in_plain_text_source_is_neutralised`; deduplication: `test_deduplication_by_file_and_by_text`; backup/restore: `test_backup_restore_keeps_citations_sources_claims_and_answers` (same chapter text and `[@key]`, citations resolve, 2 claims with supports and quotes, search index rebuilt, interview answer kept, original book untouched) |
+
+### Other Phase 04 requirements → evidence
+
+| Requirement | Evidence |
+|---|---|
+| Per-book and shared opt-in libraries; tags, enable/disable, remove/re-index, indexing status | `test_books_only_see_their_own_and_opted_in_sources`, `test_unreadable_source_is_recorded_as_failed`; UI Sources, Knowledge and source pages |
+| Chunks with headings and page/paragraph anchors; provenance; originals preserved | ADR-0005 §1; tests above |
+| FTS5 search, highlighted passages, transparent match reasons; semantic search behind a capability flag | `search.py`; the API reports `semantic: "unavailable"` with a note (no embedding model) |
+| Never fabricate titles, URLs, pages or DOIs | Titles from file metadata or name, labelled; bibliographic fields author-entered only (`test_source_metadata_is_only_what_the_author_enters`); locators only from real anchors; invented labels dropped |
+| Evidence ledger separate from prose, with review state and stable keys; export of citation metadata | `claim` / `claim_support` tables, the Evidence page, `test_author_claims_link_to_exact_passages`, `GET /projects/{id}/citations` |
+| Author voice: own writing only, analysis, editable guide, before/after, corrections | `test_samples_require_rights_confirmation`, `test_analysis_metrics_examples_and_editable_guide`, Vitest voice test, Playwright |
+| Interview: exact answers with provenance; never invent experiences | `test_answers_are_exact_versioned_and_immutable` (DB trigger), `test_drafting_from_interview_uses_only_the_authors_words` |
+| Injection isolation; escape external HTML | ADR-0005 §4, SECURITY §7c, the tests above, the Vitest search test (a `<script>` in a snippet renders as text) |
+
+## Phase 04: what was built
+
+**Core**
+- Migration `0005_knowledge`: `knowledge_library`, `library_link`, `source`, `source_chunk`, the FTS5 table `source_chunk_fts`, `claim`, `claim_support`, `author_profile`, `voice_sample`, `interview_session`, `interview_question`, and `interview_answer` with immutability triggers.
+- `knowledge/`:
+  - `extract.py`: anchored paragraphs and chunks; never crosses a heading or a PDF page;
+  - `search.py`: FTS5, safe queries, plain-text highlight segments, match reasons;
+  - `retrieval.py`: eligible sources and answers, chosen at run time;
+  - `citations.py`: checks markers, locates quotes, rewrites to `[@key, locator]`, gives per-paragraph status;
+  - `voice.py`: deterministic style analysis.
+- Services:
+  - `knowledge.py`: libraries, import with dedupe, patch, remove, re-index, viewer, search, citation export;
+  - `evidence.py`: the ledger;
+  - `voice.py`;
+  - `interview.py`, with a 10-question bank;
+  - `backup_knowledge.py`.
+- AI integration:
+  - prompts carry passage, answer and style envelopes with neutralisation and citing rules;
+  - the executor retrieves at run time, processes citations and records ledger claims in the proposal transaction;
+  - accept/reject moves claims to in-text or discarded;
+  - requests take `use_sources`, `use_interview` and `voice_profile_id`;
+  - the estimate shows how many passages and answers will be sent.
+- The test model cites provided passages and simulates a fake citation and a compromised model (`providers/mock_knowledge.py`).
+- `api/routes_knowledge.py`: 31 new endpoints.
+
+**UI**
+- **Book → Sources**: add files (duplicate notice with "Add it anyway"), the source list with status, tags, "Use for AI", "Re-read file" and Remove, a search with `<mark>` highlights, locators and "why it matched", and shared-library opt-in.
+- **Knowledge** (menu): shared libraries.
+- **Source page**: passages with locators, the cited passage highlighted and focused, and author-entered bibliography fields.
+- **Evidence ledger**: claims with support status, exact quotes linked to passages, review state, add-a-claim with a passage picker, and the cited-sources list.
+- **Interview**: questions with verbatim answers, version history, your own questions, and a third-party consent note.
+- **Author voice**: profiles, samples behind a rights checkbox, heuristic measures, exact example sentences, an editable style guide, and before/after corrections.
+- **AI assist**:
+  - choose whether to use the book's sources and the interview;
+  - "Rewrite in a voice" when revising;
+  - the estimate shows the passages to be sent;
+  - suggestion cards show the passages behind each paragraph, "Unverified" flags, and a removed-citation warning.
+- Navigation: Knowledge and Author voice are live. The book page links to Sources, Evidence ledger and Interview.
+
+**Docs:** ADR-0005; SECURITY §7c; DATA_MODEL §2.3a; ARCHITECTURE §7.2; TEST_PLAN §4.4a; README.
+
+## Decisions taken in Phase 04 (need your validation)
+
+| # | Decision | Why | Reversible? |
+|---|---|---|---|
+| P4-1 | Lexical (FTS5) search only; semantic search reported as unavailable | No local embedding model is set up; never pretend | Yes, add embeddings via Ollama later |
+| P4-2 | Citation "located" means lexical overlap ≥ 25% (at least 2 content words) with a sentence of the cited passage | Deterministic, explainable; a weak match is flagged, never hidden | Yes, tune the threshold |
+| P4-3 | Retrieval happens when the job **runs**, not when it is queued | So disabling a source always takes effect | Yes |
+| P4-4 | Citation keys are scoped to a book (or "shared") and never change | Restore keeps the keys without rewriting text | Costly later |
+| P4-5 | A style rewrite is `revise` with a voice profile, not a new task | Avoids changing job/route CHECK constraints | Yes |
+| P4-6 | Paragraphs without citations are always labelled "Unverified", even in fiction | The brief requires an explicit flag; wording is neutral | Yes (could hide for fiction) |
+| P4-7 | Removing a source keeps a tombstone row and the original file | Ledger quotes keep their title; originals are immutable | Yes |
+| P4-8 | Voice profiles are workspace-wide and not in book backups | They belong to the author, not a book | Yes |
+
+## Known limitations (Phase 04, honest list)
+
+1. **No semantic search** (capability flag `unavailable`). Synonyms and paraphrases are not found.
+2. **Locating is lexical.** A faithful paraphrase that shares few words is flagged "not located"; the author decides.
+3. Retrieval picks at most 6 passages (12,000 characters) per request from one query. There is no multi-step research (Phase 05).
+4. **Chapter preview shows citations as `(key, locator)` text, not links**; links to passages live in the review pane, ledger and source page.
+5. **No OCR**: scanned PDFs become failed sources with the reason. PDF headings are guessed from "Chapter …" lines only.
+6. **No bibliography rendering yet.** Citation metadata is exported as JSON for Phase 07.
+7. Interview questions come from a fixed bank plus the author's own. AI-suggested follow-up questions are not built.
+8. **The voice analysis is English-centric** (reading ease, contractions).
+9. Real Ollama and cloud models remain unexercised here (see Phase 03).
+10. My visual check added a source ("torque-handbook") to "The Quiet Engine" in the dev workspace (`.pbs-data`, git-ignored). Remove it on that book's Sources page if unwanted.
+
+## Phase 04: bugs found and fixed
+
+- **Phase 03 restore bug:** restoring AI revisions into the same workspace violated the "proposal applied once" unique index. Restored revisions now get a new, consistent reference. Found by the citation backup test.
+- **Importer output was Markdown-escaped** (`\[\[S7\]\]`, `\<`), which corrupted quotes and hid injected markers. Knowledge text is now the source's literal text.
+- **A three-page PDF became one chunk citing "pp. 1–3".** Chunks now break at page boundaries.
+- **Restore inserted interview questions before their session** (no ORM relationships). Parent rows are now flushed first.
+- **Source action buttons stretched to full row height** (visual check).
+
+## Phase 05 handoff
+
+Preserve:
+- retrieval at run time and the eligibility rules;
+- envelopes and neutralisation for all untrusted text;
+- citations only from provided labels, rewritten to stable keys;
+- the ledger's copied quotes;
+- immutable interview answers;
+- the "unverified" flag.
+
+Start Phase 05 with: the book brief and outline versions using the ledger and sources as research inputs; research findings stored as ledger claims with `kind` and provenance; and multi-query retrieval per outline node.
+
+---
 
 ## Phase 03 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
 
@@ -338,6 +466,10 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 04: Knowledge and evidence (2026-11-22)
+- Built as described in "Phase 04: what was built" on `phase/04-knowledge`.
+- Checked by hand in the desktop browser pane (book Sources page → search with highlights, locator and reasons), and end to end with Playwright against the built-in test model.
 
 ### Phase 03: AI providers and durable jobs (2026-11-22)
 - Built as described in "Phase 03: what was built" on `phase/03-ai-jobs`.

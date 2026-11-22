@@ -25,6 +25,8 @@ import {
   type ProposalMode,
 } from "../../api/ai";
 import { useSystemInfo } from "../../api/hooks";
+import { useBookKnowledge, useProfiles } from "../../api/knowledge";
+import { passageLink } from "../knowledge/parts";
 import { useAnnounce } from "../../components/Announcer";
 import { InlineError } from "../../components/States";
 import { relativeTime } from "../../lib/format";
@@ -89,6 +91,12 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
   const [placement, setPlacement] = useState<"end" | "cursor">("end");
   const [maxTokens, setMaxTokens] = useState("");
   const [language, setLanguage] = useState("");
+  const [useSources, setUseSources] = useState(true);
+  const [useInterview, setUseInterview] = useState(false);
+  const [voiceId, setVoiceId] = useState("");
+  const knowledge = useBookKnowledge(projectId);
+  const profiles = useProfiles();
+  const usable = knowledge.data?.usable_source_count ?? 0;
   const [selection, setSelection] = useState<Selection | null>(null);
   const [requestId, setRequestId] = useState(newRequestId);
 
@@ -117,6 +125,9 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
     ...(providerId && model ? { provider_id: providerId, model_name: model } : {}),
     ...(maxTokens ? { max_output_tokens: Number(maxTokens) } : {}),
     ...(task === "translate" && language ? { target_language: language } : {}),
+    use_sources: useSources,
+    use_interview: useInterview,
+    ...(task === "revise" && voiceId ? { voice_profile_id: voiceId } : {}),
     ...(selection && (needsSelection || mode === "insert_at")
       ? {
           selection_start: selection.start,
@@ -245,6 +256,39 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
             : "Select the passage in the editor first."}
         </p>
       )}
+      <fieldset className="knowledge-options">
+        <legend>What the model may use</legend>
+        <label className="inline-check">
+          <input type="checkbox" checked={useSources} onChange={(e) => setUseSources(e.target.checked)} />
+          This book's sources ({usable} enabled)
+        </label>
+        <label className="inline-check">
+          <input type="checkbox" checked={useInterview} onChange={(e) => setUseInterview(e.target.checked)} />
+          My interview answers
+        </label>
+        <p className="hint">
+          Passages are sent as reference material only; the model must cite them, and anything it cites that
+          it was not given is removed. <Link to={`/projects/${projectId}/knowledge`}>Manage sources</Link>
+        </p>
+      </fieldset>
+      {task === "revise" ? (
+        <div className="field">
+          <label htmlFor={`${id}-voice`}>Rewrite in a voice (optional)</label>
+          <select id={`${id}-voice`} value={voiceId} onChange={(e) => setVoiceId(e.target.value)}>
+            <option value="">No, just follow my instruction</option>
+            {(profiles.data ?? []).map((p) => (
+              <option key={p.id} value={p.id} disabled={!p.style_guide_md.trim()}>
+                {p.name}
+                {p.style_guide_md.trim() ? "" : " (no style guide yet)"}
+              </option>
+            ))}
+          </select>
+          <p className="hint">
+            Uses the style guide from <Link to="/voice">Author voice</Link>. You see the before and after and
+            decide.
+          </p>
+        </div>
+      ) : null}
       <div className="form-row">
         {task === "translate" ? (
           <div className="field">
@@ -323,6 +367,12 @@ function EstimateLine({
         <strong>Estimate:</strong> about {est.input_tokens.toLocaleString()} tokens sent, up to{" "}
         {est.max_output_tokens.toLocaleString()} back. {cost} {est.cost_note}
         {est.context_clipped ? " Long chapter: only the part around your selection or the end is sent." : ""}
+      </p>
+      <p>
+        {est.source_passages
+          ? `${est.source_passages} passage(s) from your sources will be sent.`
+          : "No source passages will be sent."}
+        {est.interview_answers ? ` ${est.interview_answers} interview answer(s) will be sent.` : ""}
       </p>
       {est.blocked_reason ? (
         <div className="inline-error">
@@ -489,6 +539,7 @@ function ProposalCard({
           onChange={(e) => setText(e.target.value)}
         />
       </div>
+      <ParagraphSources provenance={p.provenance} />
       {!p.applicable && !note ? (
         <p className="inline-error" role="alert">
           {p.not_applicable_reason}
@@ -539,5 +590,79 @@ function ProposalCard({
         </button>
       </div>
     </article>
+  );
+}
+
+interface ParaSupport {
+  label: string;
+  kind: string;
+  title: string;
+  quote: string;
+  located: boolean;
+  source_id: string | null;
+  chunk_id: string | null;
+  citation_key: string | null;
+  locator: string | null;
+}
+interface ParaInfo {
+  index: number;
+  preview: string;
+  status: "supported" | "not_located" | "unverified";
+  supports: ParaSupport[];
+  dropped_labels: string[];
+}
+
+const PARA_STATUS: Record<ParaInfo["status"], string> = {
+  supported: "Sources",
+  not_located: "Cited, but the passage could not be located: check before keeping",
+  unverified: "Unverified: no source supports this paragraph",
+};
+
+/** Per paragraph: the exact passages behind it, or an explicit "unverified" flag. */
+function ParagraphSources({ provenance }: { provenance: Record<string, unknown> }) {
+  const k = provenance.knowledge as { paragraphs?: ParaInfo[]; dropped_labels?: string[] } | undefined;
+  const paras = k?.paragraphs ?? [];
+  if (paras.length === 0) return null;
+  return (
+    <section className="para-sources" aria-label="Sources for each paragraph">
+      {k?.dropped_labels?.length ? (
+        <p className="inline-error" role="note">
+          The model cited passages it was never given ({k.dropped_labels.join(", ")}). Those citations were
+          removed.
+        </p>
+      ) : null}
+      <ol>
+        {paras.map((para) => (
+          <li key={para.index} data-status={para.status}>
+            <p className="para-preview">
+              “{para.preview}
+              {para.preview.length >= 160 ? "…" : ""}”
+            </p>
+            <p className={para.status === "supported" ? "support-ok" : "job-error"}>
+              {PARA_STATUS[para.status]}
+            </p>
+            {para.supports.length ? (
+              <ul>
+                {para.supports.map((sup, i) => (
+                  <li key={i}>
+                    {sup.kind === "interview" ? (
+                      <span>Your interview answer</span>
+                    ) : sup.source_id ? (
+                      <Link to={passageLink(sup.source_id, sup.chunk_id)}>
+                        {sup.title}, {sup.locator}
+                      </Link>
+                    ) : (
+                      sup.title
+                    )}
+                    {sup.located ? null : <span className="job-error"> (passage not located)</span>}
+                    <blockquote className="quote">{sup.quote}</blockquote>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

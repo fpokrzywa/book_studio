@@ -148,8 +148,8 @@ test("later-phase sections are visibly not implemented", async ({ page, core }) 
   void core;
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByText("Not yet implemented (Phase 04)")).toBeVisible();
-  await expect(nav.getByRole("link", { name: /Research|Knowledge|Publishing/ })).toHaveCount(0);
+  await expect(nav.getByText("Not yet implemented (Phase 05)")).toBeVisible();
+  await expect(nav.getByRole("link", { name: /Research|Publishing/ })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "AI settings" })).toBeVisible(); // Phase 03 is live
   await page.goto("/publishing");
   await expect(page.getByText("Not yet implemented.")).toBeVisible();

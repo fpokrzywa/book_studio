@@ -386,4 +386,6 @@ class RestoreOut(BaseModel):
     chapters: int
     revisions: int
     assets: int
+    sources: int = 0
+    claims: int = 0
     warnings: list[WarningOut]

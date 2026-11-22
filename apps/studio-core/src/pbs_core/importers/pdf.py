@@ -51,30 +51,51 @@ def import_pdf(data: bytes, fallback_title: str) -> ImportResult:
         "check every chapter after importing.",
     )
 
-    paragraphs: list[list[str]] = []
-    for page_text in pages:
+    paragraphs = [[text] for _, text in page_paragraphs(pages)]
+    result.chapters = paragraphs_to_chapters(paragraphs, fallback_title)
+    return result
+
+
+def read_pages(data: bytes) -> list[str]:
+    """Text of each page (validated the same way as import_pdf). Used by knowledge indexing for page anchors."""
+    return [page.extract_text() or "" for page in PdfReader(io.BytesIO(data)).pages]
+
+
+def pdf_title(data: bytes) -> str | None:
+    """The title recorded in the PDF's own metadata, if any (never guessed)."""
+    try:
+        meta = PdfReader(io.BytesIO(data)).metadata
+        title = str(meta.title).strip() if meta and meta.title else ""
+    except Exception:
+        return None
+    return title or None
+
+
+def page_paragraphs(pages: list[str]) -> list[tuple[int, str]]:
+    """Split page texts into paragraphs, keeping the 1-based page number each one starts on."""
+    out: list[tuple[int, str]] = []
+    for page_no, page_text in enumerate(pages, start=1):
         text = re.sub(r"-\n(?=[a-z])", "", page_text)  # re-join hyphenated line breaks
         current: list[str] = []
         for line in text.split("\n"):
             stripped = line.strip()
             if not stripped:
                 if current:
-                    paragraphs.append([" ".join(current)])
+                    out.append((page_no, " ".join(current)))
                     current = []
                 continue
             if re.fullmatch(r"\d{1,4}", stripped):
                 continue  # bare page numbers
             if _looks_like_heading(stripped) and current:
-                paragraphs.append([" ".join(current)])
+                out.append((page_no, " ".join(current)))
                 current = []
             current.append(stripped)
             if _looks_like_heading(stripped):
-                paragraphs.append([" ".join(current)])
+                out.append((page_no, " ".join(current)))
                 current = []
         if current:
-            paragraphs.append([" ".join(current)])
-    result.chapters = paragraphs_to_chapters(paragraphs, fallback_title)
-    return result
+            out.append((page_no, " ".join(current)))
+    return out
 
 
 def _looks_like_heading(line: str) -> bool:

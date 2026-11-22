@@ -16,7 +16,7 @@ CONTRACT = REPO / "apps" / "studio-ui" / "src" / "api" / "openapi.json"
 def test_system_info(client: TestClient) -> None:
     info = client.get("/api/system/info").json()
     assert info["privacy_mode"] == "local_only"
-    assert info["schema_revision"] == "0004"
+    assert info["schema_revision"] == "0005"
     assert info["env"] == "test"
 
 

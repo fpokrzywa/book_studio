@@ -210,6 +210,9 @@ class AiRequestIn(_Model):
     max_output_tokens: Annotated[int, Field(ge=16, le=200_000)] | None = None
     target_language: Annotated[SingleLine, StringConstraints(max_length=40)] | None = None
     target_words: Annotated[int, Field(ge=10, le=20_000)] | None = None
+    use_sources: bool = Field(True, description="Give the model passages from this book's enabled sources")
+    use_interview: bool = Field(False, description="Give the model the author's interview answers")
+    voice_profile_id: str | None = Field(None, description="Rewrite in this author's voice (style guide)")
     client_request_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,64}$")] = Field(
         description="Random ID chosen by the client; sending the same ID twice returns the same job"
     )
@@ -228,6 +231,8 @@ class EstimateOut(BaseModel):
     currency: str | None
     cost_note: str
     context_clipped: bool
+    source_passages: int = Field(0, description="Passages from the book's sources that would be sent")
+    interview_answers: int = Field(0, description="Interview answers that would be sent")
     blocked_reason: str | None = Field(None, description="Why this request cannot run now (nothing was sent)")
 
 

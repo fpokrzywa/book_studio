@@ -159,6 +159,13 @@ Optional live check against a real provider (sends one short fixed prompt):
 $env:PBS_OPENAI_API_KEY = "<your key>"; apps\studio-core\.venv\Scripts\python.exe -m pbs_core.live_check --kind openai --model <model-id>
 ```
 
+## Sources, evidence, voice and interviews (Phase 04)
+
+- **Sources.** Open a book, then **Sources**, and add Markdown, text, HTML, Word or text-based PDF files. Each is kept unchanged and split into passages you can search; matched words are highlighted and every hit says why it matched. Turn **Use for AI** off to keep a source out of new AI suggestions, or **Remove** it. **Knowledge** in the menu holds shared libraries that books can opt in to.
+- **Citations.** When AI assist uses your sources, each paragraph of a suggestion lists the exact passages behind it, or says **Unverified**. Accepted text cites them as `[@key, p. 3]`, and the passages are recorded in the book's **Evidence ledger**. Titles, authors, years, URLs and DOIs are never guessed; add them on a source's page.
+- **Author voice.** Add samples of your own writing to describe your style, edit the style guide, then choose **Rewrite in a voice** when revising a passage. You always see the before and after first.
+- **Interview.** Answer questions about your own experiences; your exact words are kept, with every version. AI may use them only as written.
+
 ## Where your data lives
 
 ```
