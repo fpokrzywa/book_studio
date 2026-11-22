@@ -73,6 +73,26 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
 - Pre-commit hook: `gitleaks` secret scan (optional if not installed; CI runs it).
 - License gate in CI: fail on AGPL/GPL/SSPL in shipped runtime dependencies unless an ADR allows it. External, user-installed tools (Pandoc GPL, Calibre GPL) are invoked as separate processes and not bundled. That is documented.
 
+## 7a. Phase 02 controls as built
+
+- **Uploads:** read in 1 MB chunks with a hard cap (`PBS_MAX_UPLOAD_MB`, default 200; images 25 MB; backups `PBS_MAX_BACKUP_MB`, default 4096). Over the cap → 413 `payload_too_large`.
+- **Archives (DOCX, backups):** `security/archive.py` inspects the central directory before anything is opened: entry count, declared and actual sizes (reads are size-capped), compression ratio (zip bombs), unsafe names (absolute, `..`, drive letters, backslashes, reserved names, `:`), symlinks, and encryption flags. DOCX XML parts with `<!DOCTYPE`/`<!ENTITY` are rejected (XXE / entity expansion) before mammoth runs.
+- **Format sniffing** by magic bytes first: old `.doc` and encrypted Office files (OLE container) are refused with guidance; encrypted PDFs are refused unless they open with an empty password.
+- **HTML imports:** standard-library parser (no DTD or entities, no network). Only known elements are mapped. `script/style/iframe/object/embed/form/svg/canvas/…` are dropped and reported. No attribute is ever copied through, so `on*` handlers cannot survive. `javascript:`/`data:` links are removed. Remote images are not downloaded (privacy); `data:` images must sniff as PNG/JPEG/GIF/WebP.
+- **Images:** raster only (SVG refused because it can carry script). Served with `X-Content-Type-Options: nosniff` and a `sandbox` CSP. The same headers apply to export, backup and original downloads.
+- **Preview/HTML export:** escaped renderer → nh3 allowlist (HTML + MathML). The UI inserts HTML in exactly one audited component. External images render as a labelled placeholder (no request). The HTML export carries a CSP that blocks scripts and network loads.
+- **Originals:** stored before parsing, content-addressed, read-only on disk, and immutable in the DB. A failed import keeps the original.
+- **Restore:** manifest/1 schema validation, a SHA-256 and size check for every file, no unlisted files, a refusal for newer schema revisions, and a NEW project with new IDs (never overwrites). Files written for a failed restore are removed.
+
+## 7b. Phase 03 controls as built (details: ADR-0004)
+
+- **Egress gate** (`providers/egress.py`): every provider request is re-checked in an httpx2 request hook. Loopback always passes. Anything else needs `cloud_allowed` + this project's consent + the provider's allowlisted host + https. No redirects, no environment proxies. `external_requests()` counts what reached the internet, and the AI settings page shows it. A pytest socket guard plus egress-counter assertions prove zero non-loopback traffic in local-only runs.
+- **No fallback:** a request runs on the provider and model it names, or on that task's configured route, or fails with `model_not_chosen`. Revoking consent fails queued cloud jobs with `egress_blocked` before anything is sent.
+- **Ollama must be on this computer:** non-loopback Ollama URLs are refused at configuration time and by the gate.
+- **Keys:** OS credential store by default. The `dev-file` fallback (development only) is explicit opt-in (`PBS_SECRET_BACKEND=dev-file`), user-only ACL, and a warning in the UI. This **supersedes** §3's "no plaintext file fallback" for development machines without a keyring. The environment-variable source is read-only and also warned about. Keys are `SecretStr`, never returned, never logged. The canary test scans the DB, WAL, logs, backup ZIP and exports.
+- **Prompt assembly:** manuscript text sits in a random-tag `<pbs-data-…>` envelope, and the system prompt says envelope content is never instructions. Models have no tools. Structured output is schema-validated. Output is only ever a proposal.
+- **Scope:** one chapter of one project per request, clipped to 48,000 characters.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

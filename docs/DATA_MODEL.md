@@ -11,7 +11,7 @@ Status: Draft v0.1 (Phase 00). The **Phase** column shows when each table first 
 - **Immutability:** `chapter_revision`, `original_file`, `source_chunk` and `usage_record` have `BEFORE UPDATE` / `BEFORE DELETE` triggers that `RAISE(ABORT, 'immutable')`. Project purge is the sole exception: it runs with a connection-scoped flag table (`_purge_ctx`) that the triggers check.
 - **Enums** are `TEXT` with `CHECK` constraints. Their Python mirrors live in `domain/enums.py`.
 - **JSON columns** (`TEXT` holding JSON) have Pydantic schemas and a `schema` tag inside the JSON (e.g. `"schema":"bdm/1"`).
-- **PRAGMAs** on every connection: `foreign_keys=ON`, `journal_mode=WAL`, `synchronous=NORMAL` (raised to `FULL` inside revision/import/export commits), `busy_timeout=5000`.
+- **PRAGMAs** on every connection: `foreign_keys=ON`, `journal_mode=WAL`, `synchronous=FULL` (as built in Phase 01: every commit is durable; single-user write volume makes the cost negligible), `busy_timeout=5000`. Every transaction starts with `BEGIN IMMEDIATE` to avoid WAL lock-upgrade failures. A `pbs_fold()` SQL function (Python `str.casefold`) is registered per connection for Unicode-aware search and sort.
 
 ## 2. Entities (ER overview)
 
@@ -55,13 +55,15 @@ erDiagram
 | audience | TEXT | free text |
 | target_word_count | INTEGER | nullable, ≥0 |
 | publication_formats | TEXT JSON | subset of `["ebook","paperback","hardcover"]` |
+| author_name | TEXT | author or pen name as free text (Phase 01) |
+| is_demo | INTEGER 0/1 | set only by the explicit demo seed script |
 | author_profile_id | TEXT FK | nullable (Phase 04) |
 | series_id | TEXT FK | nullable (Phase 08) |
 | status | TEXT | `active, archived` |
 | created_at / updated_at / archived_at | TEXT | |
 | duplicated_from_id | TEXT | provenance when duplicated |
 
-Indexes: `(status, updated_at DESC)`, plus `project_fts` (FTS5 over title and subtitle) for library search.
+Indexes: `(status, updated_at)`. Library search (as built) is a case-folded substring match (`pbs_fold(col) LIKE … ESCAPE '\'`) over title, subtitle, audience and author. Substring matching suits a personal library better than FTS token matching. FTS5 is reserved for manuscript and source search (Phase 04).
 
 **`chapter`** (a node in the manuscript tree; parts, chapters and sections share one table)
 | Column | Type | Notes |
@@ -106,13 +108,19 @@ Indexes: `(status, updated_at DESC)`, plus `project_fts` (FTS5 over title and su
 
 **`schema_meta`**: Alembic's `alembic_version` plus `app_min_version`, which refuses to open a DB written by a newer app.
 
-### 2.2 Phase 02 tables
+**Migrations as built (Phase 01):** `0001_baseline` creates `project`, `chapter`, `chapter_revision`, `activity_event`, `export_run`, `app_setting` and `_purge_ctx`, plus four triggers: revision immutability (UPDATE and DELETE), the AI-origin rule that requires `accepted_proposal_id`, and sequential `revision_no`. `0002_backup_run` adds `backup_run` (the manifest/1 bookkeeping table; the ZIP writer is Phase 02). Revisions written in Phase 01 carry `parser_version="bookmd-0.1"` and a provisional `bdm/0` structure: top-level blocks with exact source spans, IDs reused for unchanged blocks. Phase 02 introduces bookmd-1 / `bdm/1` and re-derives BDM lazily from `source_md`.
+
+**As built in Phase 02 (migration `0003_phase02`):** `original_file` (workspace-level and content-addressed, since an upload exists before a project does; immutable via triggers and a read-only file), `import_run` (`target_project_id` set at upload, `project_id` set at commit, `preview_json` = proposed chapters, `report_json` = warnings and errors), `asset` (adds `short_hash` = the first 16 hex characters of the SHA-256, unique per project), `chapter_draft` (one mutable autosave working copy per chapter: `base_revision_no`, `source_md`), `revision_tag` (label and note added after a save; the revision row never changes), `project.description`, and `export_run.format ∈ {markdown, markdown_zip, html}`. Not built: `annotation` (no UI needs it yet) and `backup_run` changes (it already existed).
+
+**Asset references are content hashes.** Text refers to images as `asset:<short_hash>`. Duplicating a project, restoring a backup or moving chapters therefore never rewrites manuscript text: the same bytes have the same reference in every project.
+
+### 2.2 Phase 02 tables (design intent; see "as built" above)
 
 - **`asset`**: `id, project_id, sha256, mime, byte_size, width_px, height_px, original_name, storage_path (relative), alt_text_default, license_note, created_at`. `UNIQUE(project_id, sha256)`.
 - **`original_file`** (immutable): `id, project_id, sha256, original_name, mime_detected, byte_size, storage_path, received_at`.
 - **`import_run`**: `id, project_id, original_file_id, importer (md|txt|docx-pandoc|docx-mammoth|html|pdf-text), status, lossy (0/1), report_json, created_at, finished_at`.
 - **`annotation`**: `id, project_id, chapter_id, block_id, kind (comment|flag|todo), body, resolved_at`, anchored to a BDM block ID.
-- **`backup_run`**: `id, project_id, path, manifest_sha256, created_at, kind (manual|pre_migration|pre_restore)`.
+- **`backup_run`** (landed early, migration 0002): `id, project_id, path, manifest_sha256, schema_revision, created_at, kind (manual|pre_migration|pre_restore)`.
 
 ### 2.3 Phase 03 tables
 
@@ -125,6 +133,18 @@ Indexes: `(status, updated_at DESC)`, plus `project_fts` (FTS5 over title and su
 - **`job_log`**: `id, job_id, ts, level, message` (redacted).
 - **`proposal`**: `id, project_id, chapter_id, job_id, step_key, base_revision_id, kind (replace_chapter|replace_blocks|insert_blocks|selection_edit), payload_md, payload_bdm_json, target_block_ids_json, status, decided_at, decided_note, provenance_json` (provider, model, prompt template id+version, retrieved chunk IDs), `UNIQUE(job_id, step_key)`.
 - **`usage_record`** (immutable): `id, job_id, provider_kind, model_name, input_tokens, output_tokens, reported_by_provider (0/1), cost_amount (nullable), currency, price_row_ref, is_estimate (0/1), created_at`.
+
+**As built (migration `0004_ai_jobs`):**
+- `provider_config`: kinds also include `xai`; `is_local` is computed, not stored; `health_json`.
+- `model_info`: `name, display_name, context_tokens, max_output_tokens, capabilities_json` (`reported:*|documented:*|declared:*|unknown`), `source (discovered|manual)`.
+- `task_route`: `temperature`, `max_output_tokens`.
+- `model_price`: replaces `price_table`; one row per provider config and model, decimals stored as text, with `source_url` and `as_of`.
+- `cloud_consent(project_id, provider_config_id, granted_at)`.
+- `job`: adds `provider_kind, params_json, input_json, prompt_template, estimate_json, partial_output`; `UNIQUE(project_id, id)`. **`job_step` is not built yet** (Phase 06).
+- `proposal`: one per job (`job_id` UNIQUE, composite FK to the job's project); `mode (append|replace_selection|insert_at|note)`, `selection_start/end`, `original_text`, `accepted_revision_id`. Staleness is computed when read, not stored.
+- `usage_record`: immutable (update/delete triggers); `price_basis` text instead of `price_row_ref`/`is_estimate`.
+- `chapter_revision.accepted_proposal_id` has a partial UNIQUE index, so no proposal is applied twice.
+- Secrets: never in the DB.
 
 ### 2.4 Phase 04–08 tables (design intent)
 
@@ -194,6 +214,15 @@ Each transition is written in one transaction together with a `job_log` row.
 `suggested → canon (author approves) | rejected`. Only `canon` facts are used as continuity ground truth.
 
 ## 4. Editing document schema: BookMD and BDM
+
+**As built (Phase 02):** `pbs_core/document/bookmd.py` (parser, `bookmd-1.0` → `bdm/1`), `serialize.py` (bdm/1 → BookMD normal form) and `html.py` (renderer + nh3 sanitizer). Differences from the design below:
+
+- Figure: `![Caption](asset:<16 hex>){#fig-id alt="Alt" width="60%"}`. Attribute values are entity-escaped (`&quot; &#123; &#125; &amp;`), so quotes and braces cannot end the attribute block (a bug found by the property test).
+- Display-math anchors use the plugin's label syntax: `$$ … $$ (eq-id)`.
+- Currency guard: `$5 and $6` stays text. The plugin's own digit check misreads the first character of a line, so PBS applies the rule itself.
+- Footnote references without a definition stay literal text and raise `missing_footnote`.
+- Revisions written in Phase 01 (`bdm/0`) are re-derived from their source text on read (`documents.bdm_of`); stored rows are never rewritten.
+- Known limits: no definition lists, sub/superscript or merged table cells (imports report them); a paragraph-level `{#id}` is not supported (use headings, figures, tables, code, math and divs for anchors).
 
 ### 4.1 BookMD (authoring dialect, `bookmd-1`)
 
