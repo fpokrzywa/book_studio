@@ -1,0 +1,53 @@
+# --- Personal Book Studio: never commit user data or secrets (public repo) ---
+.pbs-data/
+/runtime/
+/logs/
+/exports/
+/backups/
+/db-backups/
+*.pbsbak.zip
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+!fixtures/db/*.db
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Rust / Tauri
+target/
+desktop/src-tauri/gen/
+
+# Local tooling / OS
+.remember/
+.claude/settings.local.json
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+desktop.ini
