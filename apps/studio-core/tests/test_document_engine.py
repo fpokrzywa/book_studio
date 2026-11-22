@@ -240,3 +240,11 @@ def test_property_serialize_then_parse_is_identity(bl: list[dict[str, Any]]) -> 
     text = serialize.serialize(doc)
     parsed = parse(text).doc
     assert bookmd.strip_ids(parsed["blocks"]) == bookmd.strip_ids(bl), text
+
+
+def test_attribute_values_with_backslashes_round_trip() -> None:
+    """Hypothesis counterexample (Phase 03 run): alt text ending in a backslash escaped the closing quote."""
+    for alt in ("\\", 'a\\"b', "C:\\path\\", r"{\}"):
+        bl = [{"type": "figure", "src": "asset:0123456789abcdef", "caption": [{"t": "text", "v": "0"}], "alt": alt}]
+        text = serialize.serialize({"schema": "bdm/1", "blocks": bl})
+        assert bookmd.strip_ids(parse(text).doc["blocks"]) == bookmd.strip_ids(bl), text

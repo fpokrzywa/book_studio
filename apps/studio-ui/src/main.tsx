@@ -5,6 +5,7 @@ import "@fontsource/atkinson-hyperlegible/700.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/manuscript.css";
+import "./styles/ai.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";

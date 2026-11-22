@@ -55,15 +55,52 @@ def test_steps_01_to_03_and_11md_create_persist_restart_export(workspace: Path) 
     ctx2.close()
 
 
+def test_steps_06_07_15_draft_review_accept_with_zero_egress(workspace: Path, network_guard: list[object]) -> None:
+    """06 draft into a proposal, 07 accept -> ai_generated revision, 15 zero non-loopback egress."""
+    import uuid
+
+    from pbs_core.jobs.runner import JobRunner
+    from pbs_core.providers.egress import external_requests
+
+    ctx = build_context(make_settings(workspace))
+    runner = JobRunner(ctx)
+    ctx.jobs = runner
+    before = external_requests()
+    with TestClient(
+        create_app(make_settings(workspace), ctx=ctx), base_url=BASE_URL, headers={"X-PBS-Token": ctx.token}
+    ) as c:
+        prov = c.post("/api/ai/providers", json={"kind": "mock"}).json()
+        c.put("/api/ai/routes/draft", json={"provider_id": prov["id"], "model_name": "mock-writer"})
+        p = c.post("/api/projects", json={"title": "The Quiet Engine", "project_type": "technical"}).json()
+        ch = c.post(f"/api/projects/{p['id']}/chapters", json={"title": "Chapter One"}).json()
+        c.put(
+            f"/api/projects/{p['id']}/chapters/{ch['id']}/content", json={"source_md": "Body.\n", "expected_head_no": 0}
+        )
+        body = {
+            "chapter_id": ch["id"],
+            "task": "draft",
+            "instruction": "One paragraph.",
+            "base_revision_no": 1,
+            "client_request_id": uuid.uuid4().hex,
+        }
+        assert c.post(f"/api/projects/{p['id']}/ai/jobs", json=body).status_code == 202
+        runner.run_until_idle()
+        prop = c.get(f"/api/projects/{p['id']}/proposals").json()[0]  # 06
+        acc = c.post(f"/api/projects/{p['id']}/proposals/{prop['id']}/accept", json={"expected_head_no": 1})
+        assert acc.status_code == 200  # 07
+        revs = c.get(f"/api/projects/{p['id']}/chapters/{ch['id']}/revisions").json()
+        assert revs[0]["origin"] == "ai_generated"
+        assert c.get("/api/ai/status").json()["external_requests"] == before
+    ctx.close()
+    assert external_requests() == before and network_guard == []  # 15
+
+
 PENDING = [
     ("04", "ingest knowledge sources (manuscript import is covered in test_acceptance_phase02)", "04"),
     ("05", "brief + outline generation with mock provider", "05"),
-    ("06", "generate chapter draft into a proposal", "03/06"),
-    ("07", "accept proposal -> ai_generated revision", "03"),
     ("11", "export EPUB, DOCX, PDF (Markdown and HTML exports are covered)", "07"),
     ("12", "validate exports (preflight)", "07"),
     ("13", "KDP handoff package", "07"),
-    ("15", "zero non-loopback egress across the whole run with AI enabled", "03"),
 ]
 
 

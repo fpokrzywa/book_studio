@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router";
+import { useAiStatus } from "../api/ai";
 import { useSystemInfo } from "../api/hooks";
 
 export function usePageTitle(title: string) {
@@ -32,14 +33,24 @@ export function PageHeader({
 export function PrivacyBadge() {
   const info = useSystemInfo();
   const local = info.data?.privacy_mode !== "cloud_allowed";
-  const label = info.isError ? "Core offline" : local ? "Local-only" : "Cloud allowed";
+  // Live cloud activity is only polled when cloud AI is allowed at all.
+  const ai = useAiStatus(!local && !info.isError, true);
+  const sending = Object.keys(ai.data?.active_cloud_calls ?? {});
+  const label = info.isError
+    ? "Core offline"
+    : local
+      ? "Local-only"
+      : sending.length > 0
+        ? `Sending to ${sending.join(", ")}`
+        : "Cloud allowed";
   return (
     <span
       className="privacy-badge"
+      data-sending={sending.length > 0}
       title={
         local
           ? "Local-only mode: nothing you write leaves this computer. Cloud AI is off."
-          : "Cloud allowed: content may be sent to the AI providers you enabled."
+          : "Cloud allowed: text may be sent to cloud AI providers that you allowed for a book."
       }
     >
       <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" focusable="false">

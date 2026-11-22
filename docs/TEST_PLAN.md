@@ -78,6 +78,20 @@ Status: Draft v0.1 (Phase 00). Principle: **report real results only.** A test t
 - T-J6 **Local-only zero egress**: the full scenario runs under the socket guard with zero non-loopback attempts. Selecting a cloud provider in local-only → `EgressBlocked`, no fallback.
 - T-J7 Cost: no price row → cost `null` and the UI shows "unknown". Estimates are flagged `is_estimate`.
 
+**As built (Phase 03):**
+
+| Case | Tests |
+|---|---|
+| T-J1 | `test_process_restart.py::test_ai_job_survives_hard_kill_without_double_apply`, `test_ai_jobs.py::test_restart_recovers_running_jobs_without_double_commit`, Playwright `ai.spec.ts` (crash mid-stream) |
+| T-J2 | `test_cancel_while_streaming_applies_nothing`, Playwright |
+| T-J3 | `test_rate_limit_is_retried_with_backoff`, `test_auth_error_fails_without_retry_then_manual_retry` |
+| T-J4 | `test_replace_selection_goes_stale_when_passage_changes`. The "rebase" is to ask again |
+| T-J5 | `test_approved_chapter_blocks_requests_and_accepts` |
+| T-J6 | `test_local_only_mode_makes_zero_external_calls`, golden step 15, and the session socket guard |
+| T-J7 | `test_cloud_needs_confirmation_and_project_consent` (unknown, then priced) |
+
+Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `httpx2.MockTransport`. The Ollama smoke test (`-m ollama`) runs only when Ollama answers. Cloud checks: `python -m pbs_core.live_check`.
+
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
 - Planning: unsupported market metrics are never produced (assert the schema has no such fields unless a licensed source is configured). An outline change preserves prose.

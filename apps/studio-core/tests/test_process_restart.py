@@ -113,3 +113,56 @@ def test_content_survives_hard_kill_and_restart(core: CoreProcess) -> None:
         assert titles == ["Durable"]
     with httpx.Client(base_url=core.base) as anon:
         assert anon.get("/api/projects", headers={"X-PBS-Token": old_token}).status_code == 401
+
+
+def test_ai_job_survives_hard_kill_without_double_apply(tmp_path: Path) -> None:
+    """Kill Core while a job streams; after restart it re-runs once and yields exactly one suggestion."""
+    os.environ["PBS_SECRET_BACKEND"] = "memory"  # noqa: S105 - backend name
+    try:
+        core = CoreProcess(tmp_path / "ws", _free_port())
+        core.start()
+        with core.client() as c:
+            prov = c.post("/api/ai/providers", json={"kind": "mock"}).json()
+            p = c.post("/api/projects", json={"title": "Restart", "project_type": "fiction"}).json()
+            ch = c.post(f"/api/projects/{p['id']}/chapters", json={"title": "One"}).json()
+            c.put(
+                f"/api/projects/{p['id']}/chapters/{ch['id']}/content",
+                json={"source_md": "Start.\n", "expected_head_no": 0},
+            )
+            job = c.post(
+                f"/api/projects/{p['id']}/ai/jobs",
+                json={
+                    "chapter_id": ch["id"],
+                    "task": "draft",
+                    "instruction": "[[mock:slow]] go",
+                    "base_revision_no": 1,
+                    "provider_id": prov["id"],
+                    "model_name": "mock-writer",
+                    "client_request_id": "restart-test-0001",
+                },
+            ).json()
+            deadline = time.monotonic() + 15
+            while c.get(f"/api/ai/jobs/{job['id']}").json()["stage"] != "receiving" and time.monotonic() < deadline:
+                time.sleep(0.1)
+            assert c.get(f"/api/ai/jobs/{job['id']}").json()["stage"] == "receiving"
+        core.kill()
+        core.start()
+        with core.client() as c:
+            deadline = time.monotonic() + 30
+            j = c.get(f"/api/ai/jobs/{job['id']}").json()
+            while j["status"] != "succeeded" and time.monotonic() < deadline:
+                time.sleep(0.25)
+                j = c.get(f"/api/ai/jobs/{job['id']}").json()
+            assert j["status"] == "succeeded" and j["attempt"] == 2
+            logs = [x["message"] for x in c.get(f"/api/ai/jobs/{job['id']}/logs").json()]
+            assert any("Core restarted" in m for m in logs)
+            props = c.get(f"/api/projects/{p['id']}/proposals").json()
+            assert len(props) == 1
+            content = c.get(f"/api/projects/{p['id']}/chapters/{ch['id']}/content").json()
+            assert content["revision_no"] == 1 and content["source_md"] == "Start.\n"
+            a1 = c.post(f"/api/projects/{p['id']}/proposals/{props[0]['id']}/accept", json={"expected_head_no": 1})
+            a2 = c.post(f"/api/projects/{p['id']}/proposals/{props[0]['id']}/accept", json={"expected_head_no": 1})
+            assert a1.status_code == 200 and a2.status_code == 409
+        core.kill()
+    finally:
+        os.environ.pop("PBS_SECRET_BACKEND", None)

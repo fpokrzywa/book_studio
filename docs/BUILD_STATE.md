@@ -6,12 +6,154 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **02: Editor, document model, history, imports, backup/restore: COMPLETE (pending user review)** |
-| Next phase | 03: AI providers, egress gate, keyring, routing, cost, durable jobs, proposals |
-| Branch | `phase/02-editor-import-backup`, stacked on `phase/01-scaffold` (PR #1, not merged yet) |
-| Schema | Alembic head `0003`. The existing dev workspace migrated 0002 → 0003 automatically with a snapshot |
-| Platforms verified | Windows 11 x64 only. macOS scripts are written but **not executed** |
+| Current phase | **03: AI providers, egress gate, keys, routing, costs, durable jobs, review: COMPLETE (pending user review)** |
+| Next phase | 04: Knowledge and evidence |
+| Branch | `phase/03-ai-jobs`, stacked on `phase/02-editor-import-backup` (PR #2), which is stacked on `phase/01-scaffold` (PR #1). Nothing merged yet |
+| Schema | Alembic head `0004` (`0004_ai_jobs`). The dev workspace migrated 0003 → 0004 automatically, with a snapshot |
+| Platforms verified | Windows 11 x64 only. macOS is **not executed** (scripts and Keychain untested) |
 | Last updated | 2026-11-22 |
+
+## Phase 03 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 97 files already formatted |
+| mypy `--strict` (71 source files) | Success: no issues found |
+| import-linter | **4 kept**, 0 broken. New: network clients (`httpx2`, `openai`, `anthropic`, …) only inside `pbs_core.providers` |
+| pytest (Core) | **186 passed, 1 skipped, 5 xfailed**. The skip is the Ollama smoke test (no local Ollama on this machine). The xfails are golden steps owned by Phases 04, 05 and 07. Steps 06, 07 and 15 now pass |
+| License gate | passed: 94 runtime dependencies (adds `anthropic` MIT, `openai` Apache-2.0, `keyring` MIT, `httpx2` and their dependencies) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **24 passed** (6 files; 6 new AI tests) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **9 passed** (2 new AI specs against a loopback Ollama stub) |
+
+### Prompt 03 "done when" → evidence
+
+| Requirement | Where it is proven |
+|---|---|
+| Choose a local model, draft a paragraph into a review pane, accept → chapter revision | Playwright `ai.spec.ts` "Phase 03 acceptance". In the UI: add Ollama (stub server on 127.0.0.1) → Test connection → Find models → open a chapter → AI assist → pick `stub-writer:1b` → Ask → suggestion card (chapter unchanged) → Accept → revision 2, History shows "AI-generated (accepted)". Also checked by hand in the desktop browser pane with the built-in test model |
+| Cancel/retry and restart do not corrupt the chapter or double-apply | Playwright `ai.spec.ts` "cancel, retry and a Core crash…": cancel mid-stream → no suggestion; Retry; **hard-kill Core mid-stream** → restart → exactly one suggestion; a **double-clicked Accept** creates one revision. pytest: `test_process_restart.py::test_ai_job_survives_hard_kill_without_double_apply` (real process), `test_restart_recovers_running_jobs_without_double_commit`, `test_cancel_while_streaming_applies_nothing`, `test_database_refuses_applying_a_proposal_twice` (unique index), `test_rate_limit_is_retried_with_backoff` |
+| Local-only mode makes zero external AI calls | `test_local_only_mode_makes_zero_external_calls`: with a cloud provider configured and a key stored, test connection, model refresh, estimate and enqueue all refuse **before** the transport is called; the egress counter and the session socket guard both read zero. Golden step 15 (full draft → accept run). The AI settings page shows "Requests sent to the internet since Core started: none" (asserted in Playwright) |
+| Automated tests pass | above |
+
+### Other Phase 03 requirements → evidence
+
+| Requirement | Evidence |
+|---|---|
+| Adapters for Ollama, OpenAI, Gemini, Anthropic, Grok (and Groq); endpoints verified, not guessed | ADR-0004 §2, with the facts verified against the official docs on 2026-11-22 and the unverifiable ones listed. Contract tests per adapter over recorded wire formats (`test_ai_providers.py`): request shape (`max_completion_tokens`, `stream_options`, no `temperature` for Claude, Gemini key in a header), streaming, usage, structured output, refusals, error mapping (quota vs rate limit vs auth, `Retry-After`), Ollama mid-stream errors |
+| Keys in the OS credential store; dev fallback with warning; never in DB/logs/Git/exports/backups | `security/secrets.py` (keyring default; `dev-file` opt-in with warning). `test_api_key_never_leaves_the_credential_store` scans the DB, WAL, logs, backup ZIP and entries, and exports for a canary key → 0 hits. The API never returns the key, and a 422 on a bad key does not echo it |
+| Task routing; explicit selection wins; no silent fallback | `test_task_route_is_used_and_estimate_is_labelled`, `test_no_model_chosen_is_an_explicit_error`; revoking consent fails a queued job with `egress_blocked` without sending anything |
+| Structured JSON with validation; capabilities checked, not assumed | Native schema only when the capability is reported, documented or declared. `test_structured_brainstorm_is_validated` (bad JSON → retried → `invalid_output` after 3 attempts) |
+| Estimate before running; actual usage; "estimate" and "unknown" labels | `costs.estimate`; `test_cloud_needs_confirmation_and_project_consent` (no price → `null` "Unknown", then priced → `0.000038 USD` from reported usage); Vitest jobs page ("Unknown", no `%`) |
+| Durable queue: IDs, stages, retries, provenance, recovery, cancellation, bounded concurrency | `jobs/runner.py` + `jobs/execute.py`; the tests above plus `test_recover_marks_exhausted_jobs_interrupted` |
+| Status center with logs, retry, actionable failures, cost table | `/jobs` page (Vitest + Playwright, axe clean) |
+| Project-scoped requests, content limits, user review | One chapter per request, clipped to 48,000 characters; unsaved drafts and approved chapters block (`test_unsaved_changes_block_requests_and_accepts`, `test_approved_chapter_blocks_requests_and_accepts`); stale replace (`test_replace_selection_goes_stale_when_passage_changes`) |
+| Mock adapter for CI; Ollama smoke test when available; live cloud opt-in | `providers/mock.py` (deterministic, labelled "not AI"); `test_ai_live.py::test_ollama_smoke` (`-m ollama`, skipped here); `python -m pbs_core.live_check` (never run by tests) |
+
+## Phase 03: what was built
+
+**Core**
+- Migration `0004_ai_jobs` adds these tables: `provider_config`, `model_info`, `task_route`, `model_price`, `cloud_consent`, `job`, `job_log`, `proposal`, `usage_record`. It also adds `usage_record` immutability triggers and a partial unique index on `chapter_revision.accepted_proposal_id`.
+- `providers/`:
+  - `egress.py`: the gate, the external-request counter and live cloud activity;
+  - `base.py`: neutral types and error classification;
+  - adapters `mock`, `ollama`, `openai_compat` (OpenAI, Groq, xAI), `anthropic_adapter` and `gemini`;
+  - `registry.py`: permits, key lookup, capability checks.
+- `security/secrets.py`: keyring / dev-file / memory / read-only stores.
+- `jobs/`:
+  - `prompts.py`: versioned templates, random-tag data envelope, brainstorm schema;
+  - `runner.py`: claim, lease, recovery, cancel, bounded pool;
+  - `execute.py`: build, call, stream progress, retry/backoff, one-transaction commit.
+- `services/ai.py` covers privacy mode, providers, keys, test, models, routes, prices, consent, estimate, enqueue, jobs, proposals, accept/reject and usage. `services/costs.py` computes estimates and costs; it never invents a price.
+- `api/routes_ai.py` adds 27 endpoints. The job runner starts and stops with the app.
+- `live_check.py` is the opt-in real-provider check.
+
+**UI**
+- **AI settings** (replaces the "not implemented" page):
+  - privacy mode, with a confirmation before allowing cloud and the count of internet requests;
+  - providers with on-computer/cloud labels, key status, store/remove key, test connection, find models, models table with capability sources, add a model manually with a declared capability, turn off, remove;
+  - default model per task, with temperature and max output;
+  - prices with source and date.
+- **AI assist** in the chapter editor:
+  - task, model (default or explicit, labelled with where it runs), instruction, placement, max tokens;
+  - an estimate shown before running;
+  - an explanation when a request is blocked, with a one-click per-book consent when cloud is allowed;
+  - a "save first" guard;
+  - request status by stage, with Cancel and Retry;
+  - a review pane: a proof-slip card with provenance, editable text, struck-through original for replacements, "Accept as a new revision" or Reject. Notes can only be dismissed.
+- A banner says when suggestions are waiting.
+- **AI jobs** status center: every job with stage, attempts, error, log, partial output, Cancel/Retry, and a usage and cost table with totals by currency.
+- The privacy badge shows "Sending to …" during cloud calls.
+- Navigation: AI jobs and AI settings are now live.
+
+**Docs:**
+- ADR-0004 (provider integration).
+- As-built sections in SECURITY (§7b), ARCHITECTURE (§6.1, §7.1), DATA_MODEL (§2.3) and TEST_PLAN (§4.4).
+- A README "Using AI" section and new `PBS_*` settings.
+
+## Decisions taken in Phase 03 (need your validation)
+
+| # | Decision | Why | Reversible? |
+|---|---|---|---|
+| P3-1 | Support **both** xAI Grok and Groq ("Grok" was ambiguous) | Both are cheap to add through the OpenAI-compatible SDK | Yes |
+| P3-2 | Chat Completions for OpenAI, Groq and xAI (not the Responses API) | The one shape all three share; OpenAI still supports it; xAI calls it legacy | Yes; follow-up in ADR-0004 |
+| P3-3 | Gemini via REST `generateContent` (legacy but supported), not the new Interactions API | Better-documented streaming and usage | Yes |
+| P3-4 | `dev-file` key fallback (opt-in, warned), superseding SECURITY §3 "no plaintext file" | The Phase 03 brief asked for an explicit protected dev fallback | Yes |
+| P3-5 | Ollama only on loopback; remote Ollama refused | A LAN server is not "local"; it has no allowlist entry | Yes, with consent rules |
+| P3-6 | AI works only from the **saved** head; unsaved drafts block Ask and Accept | Provenance stays tied to an immutable revision, and a draft is never destroyed | Yes |
+| P3-7 | Threads + SQLite claim instead of asyncio workers; single-step jobs (`job_step` deferred to Phase 06) | Simpler cooperative cancel with the sync SDKs | Yes |
+| P3-8 | Stale proposals are computed when read; the "rebase" is "ask again" | No stored state to drift | Yes |
+| P3-9 | No shipped prices; prices are per provider and model, entered by the author | "Do not guess" | Yes |
+| P3-10 | The built-in test model is listed in dev/test only, labelled "not AI" | Lets the workflow be tried offline without misleading anyone | Yes |
+
+## Known limitations (Phase 03, honest list)
+
+1. **No real Ollama or cloud provider was exercised here.**
+   - Ollama is not installed on this machine, and no API keys were used.
+   - Adapters are tested against the documented wire formats, and the UI flow against a loopback Ollama stub.
+   - Run `uv run pytest -m ollama` (with `PBS_OLLAMA_MODEL`) and `python -m pbs_core.live_check` to confirm against real services.
+2. Facts not verifiable from the docs are listed in ADR-0004 ("Not verified"):
+   - OpenAI Responses usage fields;
+   - Gemini `RetryInfo` and pagination;
+   - Groq streamed usage;
+   - the xAI error format.
+3. **The review pane has no word-level diff for "replace" suggestions.** It shows the struck-through original and the new text. Append and insert suggestions are pure additions.
+4. Requests send **one chapter** (clipped to 48,000 characters). There is no cross-chapter or book-level context yet (Phases 05–06).
+5. **Token estimates** use ~4 characters per token. They are labelled as estimates, and actual reported usage is recorded after each call.
+6. Research is plain model knowledge with no web access, and the UI says so. Sourcing and citations arrive in Phase 04.
+7. Cancelling a non-streamed Groq structured request takes effect after the response arrives, and the result is then discarded.
+8. **The Windows credential store is used in dev runs** (`auto`). Tests and e2e use the in-memory store. The macOS Keychain is untested.
+9. The `.claude/launch.json` preview needed two starts in the desktop browser pane.
+10. My visual check left a "Built-in test model" provider, one job and one pending suggestion in the dev workspace (`.pbs-data`, git-ignored). Reject the suggestion or remove the provider in the app to tidy up.
+
+## Phase 03: bugs found and fixed
+
+- **Hypothesis found a Phase 02 serializer bug:** an attribute value ending in `\` escaped its closing quote. Backslashes are now entity-escaped, with a regression test.
+- **Nested-transaction lock:** reading the privacy setting inside the request transaction deadlocked. It is now read in the same session.
+- **The mock output was not deterministic:** the random envelope tag changed its hash.
+- **E2E found that a job finishing in the background did not refresh the review pane.** The pane now invalidates when a job succeeds.
+- **The instruction box inherited the 60vh editor height**, and a few labels were redundant (visual check).
+- **Tests were order-dependent** on the process-wide egress counter. They now compare against a baseline.
+
+## Phase 04 handoff
+
+Preserve:
+- the egress gate as the only network path (add allowlist entries, never bypass it);
+- `registry.permit_for` and the per-project consent;
+- prompts with data envelopes (`jobs/prompts.py`): extend `build()` with retrieved source chunks as **more envelopes**, never as instructions;
+- proposals as the only way AI text reaches a revision;
+- the unique index on `accepted_proposal_id`;
+- the capability vocabulary;
+- "unknown, not guessed" for prices.
+
+Start Phase 04 with:
+- the source library and chunk IDs that prompts can cite;
+- dropping model-emitted citations that are not in the provided set (SECURITY §5.4);
+- the prompt-injection fixture suite (§5.6) run through the mock adapter.
+
+---
 
 ## Phase 02 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
 
@@ -196,6 +338,11 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 03: AI providers and durable jobs (2026-11-22)
+- Built as described in "Phase 03: what was built" on `phase/03-ai-jobs`.
+- Provider endpoints were verified against the official docs by a research pass before the adapters were written.
+- Checked by hand in the desktop browser pane (AI settings → built-in test model → AI assist → suggestion card), and end to end with Playwright against a loopback Ollama stub, including a hard Core crash mid-job.
 
 ### Phase 02: Editor, document model, history, imports, backup (2026-11-22)
 - Built as described in "Phase 02: what was built" on `phase/02-editor-import-backup` (a WIP checkpoint commit, then a final commit).

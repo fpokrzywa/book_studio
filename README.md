@@ -138,8 +138,26 @@ Core reads environment variables prefixed with `PBS_`:
 | `PBS_HOST` | `127.0.0.1` | Only loopback values are accepted; anything else refuses to start |
 | `PBS_UI_ORIGINS` | `["http://127.0.0.1:5173","http://localhost:5173"]` | JSON list of allowed UI origins |
 | `PBS_LOG_LEVEL` | `INFO` | Log level. Logs are JSON in `<workspace>/logs/`, with secrets redacted |
+| `PBS_SECRET_BACKEND` | `auto` | Where AI API keys are kept: `auto`/`keyring` (the system credential store), or `dev-file` (development only: a user-only file in `<workspace>/runtime/`, with a warning in the app) |
+| `PBS_<PROVIDER>_API_KEY` | unset | Read-only key source, e.g. `PBS_OPENAI_API_KEY`. It is used when no key is stored, and the app warns about it |
+| `PBS_AI_WORKERS` | `2` | How many AI jobs run at once (a local Ollama server always runs one at a time) |
 
 The UI dev server reads `PBS_WORKSPACE`, `PBS_CORE_URL` (default `http://127.0.0.1:8765`) and `PBS_UI_PORT` (default `5173`).
+
+## Using AI (Phase 03)
+
+AI is optional. Nothing leaves this computer unless you allow it.
+
+1. **Local models (recommended).** Install [Ollama](https://ollama.com), run `ollama pull <model>`, then in **AI settings** add *Ollama (local)*, click **Test connection** and then **Find models**. Only addresses on this computer are accepted.
+2. **Write with AI.** In a chapter, open **AI assist**, pick a task and a model, describe what you want, and click **Ask**. The answer appears as a suggestion. Edit it if you like, then **Accept as a new revision** (undo it from History) or **Reject**. Save your changes before asking, so the model sees what you see.
+3. **Cloud models.** OpenAI, Anthropic, Google Gemini, Groq and xAI (Grok) are available. Switch AI settings to *Cloud allowed* (you are asked to confirm), store the API key, and allow each book to use that provider the first time. Enter the model's price (from the provider's pricing page) to see cost estimates; without one, cost shows as unknown.
+4. **AI jobs** shows every request with its stages, log, Retry/Cancel, and a usage and cost table.
+
+Optional live check against a real provider (sends one short fixed prompt):
+
+```powershell
+$env:PBS_OPENAI_API_KEY = "<your key>"; apps\studio-core\.venv\Scripts\python.exe -m pbs_core.live_check --kind openai --model <model-id>
+```
 
 ## Where your data lives
 

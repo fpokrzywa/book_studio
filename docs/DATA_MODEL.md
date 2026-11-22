@@ -134,6 +134,18 @@ Indexes: `(status, updated_at)`. Library search (as built) is a case-folded subs
 - **`proposal`**: `id, project_id, chapter_id, job_id, step_key, base_revision_id, kind (replace_chapter|replace_blocks|insert_blocks|selection_edit), payload_md, payload_bdm_json, target_block_ids_json, status, decided_at, decided_note, provenance_json` (provider, model, prompt template id+version, retrieved chunk IDs), `UNIQUE(job_id, step_key)`.
 - **`usage_record`** (immutable): `id, job_id, provider_kind, model_name, input_tokens, output_tokens, reported_by_provider (0/1), cost_amount (nullable), currency, price_row_ref, is_estimate (0/1), created_at`.
 
+**As built (migration `0004_ai_jobs`):**
+- `provider_config`: kinds also include `xai`; `is_local` is computed, not stored; `health_json`.
+- `model_info`: `name, display_name, context_tokens, max_output_tokens, capabilities_json` (`reported:*|documented:*|declared:*|unknown`), `source (discovered|manual)`.
+- `task_route`: `temperature`, `max_output_tokens`.
+- `model_price`: replaces `price_table`; one row per provider config and model, decimals stored as text, with `source_url` and `as_of`.
+- `cloud_consent(project_id, provider_config_id, granted_at)`.
+- `job`: adds `provider_kind, params_json, input_json, prompt_template, estimate_json, partial_output`; `UNIQUE(project_id, id)`. **`job_step` is not built yet** (Phase 06).
+- `proposal`: one per job (`job_id` UNIQUE, composite FK to the job's project); `mode (append|replace_selection|insert_at|note)`, `selection_start/end`, `original_text`, `accepted_revision_id`. Staleness is computed when read, not stored.
+- `usage_record`: immutable (update/delete triggers); `price_basis` text instead of `price_row_ref`/`is_estimate`.
+- `chapter_revision.accepted_proposal_id` has a partial UNIQUE index, so no proposal is applied twice.
+- Secrets: never in the DB.
+
 ### 2.4 Phase 04–08 tables (design intent)
 
 - **Knowledge:** `knowledge_library (id, scope project|shared, project_id nullable, name)`, `project_library_link`, `knowledge_source (id, library_id, kind file|url|interview, title, uri, original_file_id, retrieved_at, content_sha256, enabled, tags_json, index_status)`, `source_chunk (id, source_id, ordinal, text, heading_path, page_from, page_to, char_start, char_end, sha256)` (immutable), `source_chunk_fts` (FTS5, external content), `chunk_embedding (chunk_id, model, dim, vector BLOB)` (optional).

@@ -67,6 +67,8 @@ def make_settings(workspace: Path, **overrides: Any) -> Settings:
         "port": PORT,
         "ui_origins": [UI_ORIGIN],
         "log_console": False,
+        "secret_backend": "memory",  # never touch the real OS credential store in tests
+        "ai_runner": False,  # tests drive the job runner explicitly
     }
     values.update(overrides)
     return Settings(**values)

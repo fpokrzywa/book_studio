@@ -2,6 +2,8 @@ import type { RouteObject } from "react-router";
 import { Link } from "react-router";
 import { NotAvailable, PageHeader } from "../components/Misc";
 import { ActivityPage } from "../features/activity/ActivityPage";
+import { AiSettingsPage } from "../features/ai/AiSettingsPage";
+import { JobsPage } from "../features/ai/JobsPage";
 import { ChapterEditorPage } from "../features/editor/ChapterEditorPage";
 import { HelpPage } from "../features/help/HelpPage";
 import { ImportPage } from "../features/import/ImportPage";
@@ -65,16 +67,8 @@ export const routes: RouteObject[] = [
           />
         ),
       },
-      {
-        path: "ai-settings",
-        element: (
-          <NotAvailable
-            feature="AI settings"
-            phase="03"
-            what="Local and cloud AI providers, privacy controls and cost tracking."
-          />
-        ),
-      },
+      { path: "ai-settings", element: <AiSettingsPage /> },
+      { path: "jobs", element: <JobsPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },

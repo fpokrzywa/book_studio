@@ -14,6 +14,8 @@ const WORKING: NavItem[] = [
   { to: "/new", label: "New book" },
   { to: "/import", label: "Import" },
   { to: "/manuscripts", label: "Manuscripts" },
+  { to: "/jobs", label: "AI jobs" },
+  { to: "/ai-settings", label: "AI settings" },
   { to: "/activity", label: "Activity" },
   { to: "/help", label: "Help" },
 ];
@@ -23,7 +25,6 @@ export const LATER: { label: string; phase: string }[] = [
   { label: "Research", phase: "05" },
   { label: "Knowledge", phase: "04" },
   { label: "Publishing", phase: "07" },
-  { label: "AI settings", phase: "03" },
 ];
 
 export function AppShell() {

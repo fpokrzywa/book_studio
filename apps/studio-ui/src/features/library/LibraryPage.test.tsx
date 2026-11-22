@@ -83,12 +83,15 @@ describe("LibraryPage", () => {
     mockApi({ ...common, "GET /api/projects": () => ({ json: { items: [], total: 0 } }) });
     renderRoutes(routes, "/");
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    for (const name of ["Research", "Knowledge", "Publishing", "AI settings"]) {
+    for (const name of ["Research", "Knowledge", "Publishing"]) {
       expect(within(nav).queryByRole("link", { name: new RegExp(name) })).toBeNull();
       const item = within(nav).getByText(name);
       expect(item.closest("[aria-disabled='true']")).not.toBeNull();
     }
-    expect(within(nav).getAllByText(/Not yet implemented/)).toHaveLength(4);
+    expect(within(nav).getAllByText(/Not yet implemented/)).toHaveLength(3);
+    // Phase 03 sections are real links now.
+    expect(within(nav).getByRole("link", { name: "AI settings" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "AI jobs" })).toBeInTheDocument();
     expect(await screen.findByText("Local-only")).toBeInTheDocument();
   });
 });

@@ -61,7 +61,13 @@ def _title(title: str | None) -> str:
 
 def _attr_value(v: str) -> str:
     """Attribute values are entity-escaped so quotes and braces cannot end the attribute block."""
-    return v.replace("&", "&amp;").replace('"', "&quot;").replace("{", "&#123;").replace("}", "&#125;")
+    return (
+        v.replace("&", "&amp;")
+        .replace("\\", "&#92;")  # a trailing backslash would otherwise escape the closing quote
+        .replace('"', "&quot;")
+        .replace("{", "&#123;")
+        .replace("}", "&#125;")
+    )
 
 
 def attrs_text(attrs: dict[str, Any] | None, extra_kv: dict[str, str] | None = None) -> str:

@@ -6,13 +6,16 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.1",
+    "anthropic>=2.12.0",
     "defusedxml>=0.7.1",
     "fastapi>=0.165.0",
+    "keyring>=25.7.0",
     "latex2mathml>=3.81.1",
     "mammoth>=1.13.0",
     "markdown-it-py>=4.3.0",
     "mdit-py-plugins>=0.7.0",
     "nh3>=0.3.8",
+    "openai>=3.57.0",
     "platformdirs>=4.14.8",
     "pydantic>=2.14.4",
     "pydantic-settings>=2.16.3",
@@ -73,7 +76,11 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
-markers = ["slow: spawns real Core processes"]
+markers = [
+    "slow: spawns real Core processes",
+    "ollama: needs a running local Ollama server (skipped otherwise)",
+    "live: opt-in live cloud provider checks (PBS_LIVE_TESTS=1 and real keys)",
+]
 filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecated"]
 
 [tool.importlinter]
@@ -87,7 +94,17 @@ source_modules = ["pbs_core.domain", "pbs_core.document"]
 forbidden_modules = ["fastapi", "starlette", "sqlalchemy", "pbs_core.api", "pbs_core.services", "pbs_core.storage"]
 
 [[tool.importlinter.contracts]]
-name = "No network client libraries anywhere in Phase 01 (egress gate arrives in Phase 03)"
+name = "Network clients only behind the egress gate (pbs_core.providers)"
+type = "forbidden"
+source_modules = [
+    "pbs_core.api", "pbs_core.services", "pbs_core.storage", "pbs_core.document", "pbs_core.domain",
+    "pbs_core.jobs", "pbs_core.security", "pbs_core.importers", "pbs_core.context", "pbs_core.config",
+]
+forbidden_modules = ["httpx", "httpx2", "requests", "urllib3", "aiohttp", "openai", "anthropic"]
+allow_indirect_imports = true  # e.g. services -> providers.registry -> (gated) httpx2 is the intended path
+
+[[tool.importlinter.contracts]]
+name = "Only httpx2 behind the gate: httpx, requests, urllib3 and aiohttp are never imported"
 type = "forbidden"
 source_modules = ["pbs_core"]
 forbidden_modules = ["httpx", "requests", "urllib3", "aiohttp"]

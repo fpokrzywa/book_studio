@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -12,11 +13,15 @@ from pbs_core.config import Settings
 from pbs_core.domain.clock import Clock
 from pbs_core.domain.ids import UlidFactory
 from pbs_core.logging_setup import close_logging, configure_logging
+from pbs_core.security.secrets import SecretStore, build_store
 from pbs_core.security.token import generate_token, write_token
 from pbs_core.storage.db import Database, create_sqlite_engine
 from pbs_core.storage.migrate import MigrationResult, migrate
 from pbs_core.storage.models import AppSetting
 from pbs_core.storage.paths import Workspace
+
+if TYPE_CHECKING:
+    from pbs_core.jobs.runner import JobRunner
 
 log = structlog.get_logger(__name__)
 
@@ -32,6 +37,9 @@ class AppContext:
     clock: Clock
     token: str
     migration: MigrationResult
+    secrets: SecretStore = field(default=None)  # type: ignore[assignment]  # set by build_context
+    http_transport: Any = None  # tests inject an httpx2.MockTransport; None = real network (gated)
+    jobs: JobRunner | None = None
 
     @property
     def schema_revision(self) -> str:
@@ -47,7 +55,13 @@ class AppContext:
         close_logging()
 
 
-def build_context(settings: Settings, *, clock: Clock | None = None, ids: UlidFactory | None = None) -> AppContext:
+def build_context(
+    settings: Settings,
+    *,
+    clock: Clock | None = None,
+    ids: UlidFactory | None = None,
+    secrets: SecretStore | None = None,
+) -> AppContext:
     workspace = Workspace(settings.resolved_workspace())
     workspace.ensure()
     configure_logging(workspace.logs_dir, settings.log_level, console=settings.log_console)
@@ -69,4 +83,6 @@ def build_context(settings: Settings, *, clock: Clock | None = None, ids: UlidFa
     token = generate_token()
     write_token(workspace.runtime_dir, workspace.token_path, token)
     log.info("core_ready", version=__version__, workspace=str(workspace.root), schema=result.to_revision)
-    return AppContext(settings, workspace, db, ids or UlidFactory(), clock, token, result)
+    store = secrets or build_store(settings.secret_backend, workspace.runtime_dir)
+    log.info("secret_store", backend=store.name, secure=store.secure, writable=store.writable)
+    return AppContext(settings, workspace, db, ids or UlidFactory(), clock, token, result, secrets=store)

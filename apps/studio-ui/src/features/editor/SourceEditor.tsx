@@ -10,6 +10,8 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 export interface SourceEditorHandle {
   insertBlock(text: string): void;
   focus(): void;
+  /** Current selection as offsets into the source text (null when there is no editor). */
+  getSelection(): { start: number; end: number; text: string } | null;
 }
 
 interface Props {
@@ -60,6 +62,17 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
     },
     focus() {
       (view.current ?? textarea.current)?.focus();
+    },
+    getSelection() {
+      if (view.current) {
+        const { from, to } = view.current.state.selection.main;
+        return { start: from, end: to, text: view.current.state.doc.sliceString(from, to) };
+      }
+      const t = textarea.current;
+      if (!t) return null;
+      const start = t.selectionStart ?? 0;
+      const end = t.selectionEnd ?? start;
+      return { start, end, text: t.value.slice(start, end) };
     },
   }));
 

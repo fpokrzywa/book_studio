@@ -18,6 +18,8 @@ import { usePageTitle } from "../../components/Misc";
 import { SanitizedHtml } from "../../components/SanitizedHtml";
 import { EmptyState, ErrorState, InlineError, Loading } from "../../components/States";
 import { absoluteTime, CHAPTER_STATUSES, relativeTime, words } from "../../lib/format";
+import { useProposals } from "../../api/ai";
+import { AiAssistPanel } from "../ai/AiAssistPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { SourceEditor, type SourceEditorHandle } from "./SourceEditor";
 
@@ -170,6 +172,19 @@ function Editor({
     () => stored("pbs.editor.mode", "code", ["code", "plain"] as const) === "plain",
   );
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(
+    () => stored("pbs.editor.ai", "closed", ["open", "closed"] as const) === "open",
+  );
+  const proposals = useProposals(projectId, chapterId);
+  const pendingCount = proposals.data?.length ?? 0;
+  const setAiOpenStored = (open: boolean) => {
+    setAiOpen(open);
+    try {
+      localStorage.setItem("pbs.editor.ai", open ? "open" : "closed");
+    } catch {
+      /* ignore */
+    }
+  };
   const [imageOpen, setImageOpen] = useState(false);
   const [rendered, setRendered] = useState<Preview | null>(null);
 
@@ -337,6 +352,15 @@ function Editor({
           </button>
           <button
             type="button"
+            className="btn"
+            aria-expanded={aiOpen}
+            aria-controls={`${id}-ai`}
+            onClick={() => setAiOpenStored(!aiOpen)}
+          >
+            AI assist{pendingCount ? ` (${pendingCount} to review)` : ""}
+          </button>
+          <button
+            type="button"
             className="btn btn-primary"
             onClick={() => doSave(base.revision_no)}
             disabled={locked || save.isPending || !dirty}
@@ -407,6 +431,17 @@ function Editor({
               Discard draft
             </button>
           </span>
+        </div>
+      ) : null}
+      {pendingCount > 0 && !aiOpen ? (
+        <div className="banner" role="status">
+          <span>
+            {pendingCount === 1 ? "An AI suggestion is" : `${pendingCount} AI suggestions are`} waiting for
+            your review. Nothing has been changed in the chapter.
+          </span>
+          <button type="button" className="btn btn-small" onClick={() => setAiOpenStored(true)}>
+            Review
+          </button>
         </div>
       ) : null}
       {readOnly ? (
@@ -511,6 +546,21 @@ function Editor({
         typed. Changes are autosaved as a draft; Save (Ctrl+S, or Cmd+S on a Mac) keeps a new revision.
         Tables, math ($…$), citations ([@key]), footnotes ([^1]) and images are supported.
       </p>
+
+      <div id={`${id}-ai`} hidden={!aiOpen}>
+        {aiOpen ? (
+          <AiAssistPanel
+            projectId={projectId}
+            chapterId={chapterId}
+            headNo={base.revision_no}
+            dirty={dirty}
+            locked={locked}
+            onSave={() => doSave(base.revision_no)}
+            getSelection={() => editor.current?.getSelection() ?? null}
+            proposals={proposals.data ?? []}
+          />
+        ) : null}
+      </div>
 
       <Dialog
         isOpen={historyOpen}

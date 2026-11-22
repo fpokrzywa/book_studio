@@ -81,6 +81,7 @@ function setup(overrides: Record<string, Handler> = {}, initial = content(1, "Ol
     [`GET /api/projects/${P}/backups`]: () => ({ json: [] }),
     "GET /api/projects": () => ({ json: { items: [], total: 0 } }),
     "GET /api/activity": () => ({ json: [] }),
+    [`GET /api/projects/${P}/proposals`]: () => ({ json: [] }),
     ...overrides,
   });
 }

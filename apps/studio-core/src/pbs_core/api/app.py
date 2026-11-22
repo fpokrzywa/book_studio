@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from pbs_core import __version__
 from pbs_core.api import errors
 from pbs_core.api.routes import api, health
+from pbs_core.api.routes_ai import router as ai_router
 from pbs_core.config import Settings
 from pbs_core.context import AppContext, build_context
 from pbs_core.security.guard import LocalGuard
@@ -28,9 +29,21 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        yield
-        if ctx is not None:
-            ctx.close()
+        runner = None
+        if ctx is not None and settings.ai_runner and ctx.jobs is None:
+            from pbs_core.jobs.runner import JobRunner
+
+            runner = JobRunner(ctx, workers=settings.ai_workers)
+            ctx.jobs = runner
+            runner.start()  # recovers jobs a previous process left running
+        try:
+            yield
+        finally:
+            if runner is not None:
+                runner.stop()
+                ctx.jobs = None  # type: ignore[union-attr]
+            if ctx is not None:
+                ctx.close()
 
     app = FastAPI(
         title="Personal Book Studio Core",
@@ -44,6 +57,7 @@ def create_app(
     errors.install(app)
     app.include_router(health)
     app.include_router(api)
+    app.include_router(ai_router)
     if ctx is not None:
         token = ctx.token
         app.add_middleware(

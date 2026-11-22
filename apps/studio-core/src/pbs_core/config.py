@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     log_console: bool = True
     max_upload_mb: int = 200
     max_backup_mb: int = 4096
+    secret_backend: Literal["auto", "keyring", "dev-file", "memory"] = "auto"  # noqa: S105 - a backend name
+    ai_workers: int = 2
+    ai_runner: bool = True  # tests drive the runner by hand
 
     @field_validator("host")
     @classmethod

@@ -435,6 +435,7 @@ def append_revision(
     note: str | None = None,
     restored_from: str | None = None,
     import_run_id: str | None = None,
+    accepted_proposal_id: str | None = None,
 ) -> ChapterRevision:
     """Append an immutable revision inside the caller's transaction and move the head to it."""
     head = _head(s, chapter)
@@ -457,6 +458,7 @@ def append_revision(
         note=note,
         restored_from_revision_id=restored_from,
         import_run_id=import_run_id,
+        accepted_proposal_id=accepted_proposal_id,
         created_at=now,
     )
     s.add(revision)

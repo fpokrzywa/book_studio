@@ -26,6 +26,7 @@ export class Core {
         PBS_PORT: String(this.port),
         PBS_UI_ORIGINS: JSON.stringify([`http://127.0.0.1:${this.uiPort}`, `http://localhost:${this.uiPort}`]),
         PBS_LOG_CONSOLE: "false",
+        PBS_SECRET_BACKEND: "memory", // never touch the OS credential store from tests
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

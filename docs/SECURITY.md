@@ -84,6 +84,15 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
 - **Originals:** stored before parsing, content-addressed, read-only on disk, and immutable in the DB. A failed import keeps the original.
 - **Restore:** manifest/1 schema validation, a SHA-256 and size check for every file, no unlisted files, a refusal for newer schema revisions, and a NEW project with new IDs (never overwrites). Files written for a failed restore are removed.
 
+## 7b. Phase 03 controls as built (details: ADR-0004)
+
+- **Egress gate** (`providers/egress.py`): every provider request is re-checked in an httpx2 request hook. Loopback always passes. Anything else needs `cloud_allowed` + this project's consent + the provider's allowlisted host + https. No redirects, no environment proxies. `external_requests()` counts what reached the internet, and the AI settings page shows it. A pytest socket guard plus egress-counter assertions prove zero non-loopback traffic in local-only runs.
+- **No fallback:** a request runs on the provider and model it names, or on that task's configured route, or fails with `model_not_chosen`. Revoking consent fails queued cloud jobs with `egress_blocked` before anything is sent.
+- **Ollama must be on this computer:** non-loopback Ollama URLs are refused at configuration time and by the gate.
+- **Keys:** OS credential store by default. The `dev-file` fallback (development only) is explicit opt-in (`PBS_SECRET_BACKEND=dev-file`), user-only ACL, and a warning in the UI. This **supersedes** §3's "no plaintext file fallback" for development machines without a keyring. The environment-variable source is read-only and also warned about. Keys are `SecretStr`, never returned, never logged. The canary test scans the DB, WAL, logs, backup ZIP and exports.
+- **Prompt assembly:** manuscript text sits in a random-tag `<pbs-data-…>` envelope, and the system prompt says envelope content is never instructions. Models have no tools. Structured output is schema-validated. Output is only ever a proposal.
+- **Scope:** one chapter of one project per request, clipped to 48,000 characters.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

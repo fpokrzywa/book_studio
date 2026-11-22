@@ -188,6 +188,9 @@ Rules:
 - **Cancellation:** a cooperative flag checked between provider stream chunks and steps. In-flight HTTP is cancelled through an `httpx` task cancel. Status moves to `cancelled`; partial output is kept as a non-applicable draft for inspection.
 - **Progress:** stages (`preparing → calling_model → validating → saved`) plus counts (`3/12 sections`). No invented percentages.
 
+### 6.1 As built in Phase 03
+Threads, not asyncio: `jobs/runner.py` claims jobs in `BEGIN IMMEDIATE` and runs them in a bounded pool (2, and 1 per Ollama server). Leases are extended while text streams in. Startup recovery re-queues or marks `interrupted`. Cancellation uses an event plus a DB flag. Jobs are single-step (`job_step` is deferred to Phase 06). Exactly-once uses UNIQUE `proposal.job_id` plus a partial UNIQUE index on `chapter_revision.accepted_proposal_id`. Stages: `queued → preparing → calling_model → receiving → ready_for_review`, plus received-character counts. There are no percentages. See ADR-0004 §5.
+
 ## 7. Provider layer
 
 ```
@@ -202,6 +205,9 @@ ProviderAdapter (Protocol)
 - The **egress gate** wraps every non-local adapter. In local-only mode it raises `EgressBlocked` before any socket opens. A local adapter pointed at a non-loopback host counts as cloud.
 - **Cost accounting:** `price_table` rows are user-maintained (`source_url`, `as_of`). Cost = usage × price when both are known. Otherwise the value is `null` and shows as "unknown". Pre-run estimates are labeled "estimate".
 - SDKs are verified against current official docs in Phase 03 (see ADR-0001 §4). Retries use exponential backoff with jitter on 429/5xx only. Every call has a timeout.
+
+### 7.1 As built in Phase 03
+Adapters (`providers/`): `mock`, `ollama` (REST), `openai` / `groq` / `xai` (official `openai` SDK, Chat Completions), `anthropic` (official SDK), `gemini` (REST). All share one `stream_chat(req, on_delta, should_cancel)` protocol. Structured output is native only when the capability is reported, documented or declared; the reply is always validated. Prices live in `model_price` per provider config and are user-entered. See ADR-0004.
 
 ## 8. Frontend architecture
 

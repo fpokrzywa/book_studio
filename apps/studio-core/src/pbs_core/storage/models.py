@@ -15,6 +15,7 @@ from sqlalchemy import (
     MetaData,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -153,6 +154,13 @@ class ChapterRevision(Base):
         ),
         CheckConstraint(_in("origin", REVISION_ORIGINS), name="origin"),
         CheckConstraint("revision_no >= 1", name="revision_no"),
+        # Added by migration 0004: a proposal can be applied at most once.
+        Index(
+            "uq_revision_accepted_proposal",
+            "accepted_proposal_id",
+            unique=True,
+            sqlite_where=text("accepted_proposal_id IS NOT NULL"),
+        ),
     )
 
 
@@ -329,3 +337,7 @@ class RevisionTag(Base):
             name="fk_tag_revision",
         ),
     )
+
+
+# Phase 03 tables live in their own module but share this metadata.
+from pbs_core.storage import ai_models  # noqa: E402, F401
