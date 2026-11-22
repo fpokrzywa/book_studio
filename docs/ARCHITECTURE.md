@@ -98,7 +98,7 @@ book_studio/
   docs/
 ```
 
-**Contract rule:** Pydantic models in `pbs_core` are the API source of truth. The TS client and types in `packages/contracts` are generated from FastAPI's OpenAPI document (`openapi-typescript`). CI fails if the generated client is stale.
+**Contract rule:** Pydantic models in `pbs_core/contracts.py` are the API source of truth. As built, the OpenAPI document is committed at `apps/studio-ui/src/api/openapi.json`, and the TS types at `apps/studio-ui/src/api/schema.d.ts` are generated from it with `openapi-typescript` (`scripts/gen-api`). A separate `packages/contracts` package was unnecessary for one consumer. A backend test fails if the committed contract is stale.
 
 ## 3. Workspace boundaries
 
@@ -205,7 +205,7 @@ ProviderAdapter (Protocol)
 ## 9. Error handling and logging
 
 - Core returns RFC 9457 `application/problem+json` with a stable `type` code. The UI maps codes to actionable messages. A top-level React error boundary plus per-route boundaries.
-- Logging: `structlog` JSON to `logs/`. A redaction processor scrubs known secret patterns (`sk-…`, `Bearer …`, `x-api-key`, `AIza…`, `gsk_…`) and any value whose key matches `/key|token|secret|password|authorization/i`. Manuscript text is **not logged** by default (only IDs, lengths and hashes).
+- Logging: `structlog` JSON to `logs/core.jsonl` (rotated at midnight, 14 kept). Uvicorn and other stdlib logs go through the same redacting formatter. A redaction processor scrubs known secret patterns (`sk-…`, `Bearer …`, `x-api-key`, `AIza…`, `gsk_…`) and any value whose key matches `/key|token|secret|password|authorization/i`. Manuscript text is **not logged** by default (only IDs, lengths and hashes).
 - The Activity log (user-facing) is a separate `activity_event` table holding human-readable, non-secret events.
 
 ## 10. Desktop packaging (Phase 10 preview)

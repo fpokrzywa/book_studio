@@ -11,7 +11,7 @@ Status: Draft v0.1 (Phase 00). The **Phase** column shows when each table first 
 - **Immutability:** `chapter_revision`, `original_file`, `source_chunk` and `usage_record` have `BEFORE UPDATE` / `BEFORE DELETE` triggers that `RAISE(ABORT, 'immutable')`. Project purge is the sole exception: it runs with a connection-scoped flag table (`_purge_ctx`) that the triggers check.
 - **Enums** are `TEXT` with `CHECK` constraints. Their Python mirrors live in `domain/enums.py`.
 - **JSON columns** (`TEXT` holding JSON) have Pydantic schemas and a `schema` tag inside the JSON (e.g. `"schema":"bdm/1"`).
-- **PRAGMAs** on every connection: `foreign_keys=ON`, `journal_mode=WAL`, `synchronous=NORMAL` (raised to `FULL` inside revision/import/export commits), `busy_timeout=5000`.
+- **PRAGMAs** on every connection: `foreign_keys=ON`, `journal_mode=WAL`, `synchronous=FULL` (as built in Phase 01: every commit is durable; single-user write volume makes the cost negligible), `busy_timeout=5000`. Every transaction starts with `BEGIN IMMEDIATE` to avoid WAL lock-upgrade failures. A `pbs_fold()` SQL function (Python `str.casefold`) is registered per connection for Unicode-aware search and sort.
 
 ## 2. Entities (ER overview)
 
@@ -55,13 +55,15 @@ erDiagram
 | audience | TEXT | free text |
 | target_word_count | INTEGER | nullable, ≥0 |
 | publication_formats | TEXT JSON | subset of `["ebook","paperback","hardcover"]` |
+| author_name | TEXT | author or pen name as free text (Phase 01) |
+| is_demo | INTEGER 0/1 | set only by the explicit demo seed script |
 | author_profile_id | TEXT FK | nullable (Phase 04) |
 | series_id | TEXT FK | nullable (Phase 08) |
 | status | TEXT | `active, archived` |
 | created_at / updated_at / archived_at | TEXT | |
 | duplicated_from_id | TEXT | provenance when duplicated |
 
-Indexes: `(status, updated_at DESC)`, plus `project_fts` (FTS5 over title and subtitle) for library search.
+Indexes: `(status, updated_at)`. Library search (as built) is a case-folded substring match (`pbs_fold(col) LIKE … ESCAPE '\'`) over title, subtitle, audience and author. Substring matching suits a personal library better than FTS token matching. FTS5 is reserved for manuscript and source search (Phase 04).
 
 **`chapter`** (a node in the manuscript tree; parts, chapters and sections share one table)
 | Column | Type | Notes |
@@ -106,13 +108,15 @@ Indexes: `(status, updated_at DESC)`, plus `project_fts` (FTS5 over title and su
 
 **`schema_meta`**: Alembic's `alembic_version` plus `app_min_version`, which refuses to open a DB written by a newer app.
 
+**Migrations as built (Phase 01):** `0001_baseline` creates `project`, `chapter`, `chapter_revision`, `activity_event`, `export_run`, `app_setting` and `_purge_ctx`, plus four triggers: revision immutability (UPDATE and DELETE), the AI-origin rule that requires `accepted_proposal_id`, and sequential `revision_no`. `0002_backup_run` adds `backup_run` (the manifest/1 bookkeeping table; the ZIP writer is Phase 02). Revisions written in Phase 01 carry `parser_version="bookmd-0.1"` and a provisional `bdm/0` structure: top-level blocks with exact source spans, IDs reused for unchanged blocks. Phase 02 introduces bookmd-1 / `bdm/1` and re-derives BDM lazily from `source_md`.
+
 ### 2.2 Phase 02 tables
 
 - **`asset`**: `id, project_id, sha256, mime, byte_size, width_px, height_px, original_name, storage_path (relative), alt_text_default, license_note, created_at`. `UNIQUE(project_id, sha256)`.
 - **`original_file`** (immutable): `id, project_id, sha256, original_name, mime_detected, byte_size, storage_path, received_at`.
 - **`import_run`**: `id, project_id, original_file_id, importer (md|txt|docx-pandoc|docx-mammoth|html|pdf-text), status, lossy (0/1), report_json, created_at, finished_at`.
 - **`annotation`**: `id, project_id, chapter_id, block_id, kind (comment|flag|todo), body, resolved_at`, anchored to a BDM block ID.
-- **`backup_run`**: `id, project_id, path, manifest_sha256, created_at, kind (manual|pre_migration|pre_restore)`.
+- **`backup_run`** (landed early, migration 0002): `id, project_id, path, manifest_sha256, schema_revision, created_at, kind (manual|pre_migration|pre_restore)`.
 
 ### 2.3 Phase 03 tables
 
