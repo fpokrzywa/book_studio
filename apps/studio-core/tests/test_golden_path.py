@@ -1,5 +1,6 @@
 """E2E-GOLDEN-01 (docs/TEST_PLAN.md section 5), backend driver.
 
+Steps 08-10 and 14 (edit, restore, backup/restore) are covered by test_acceptance_phase02.py.
 Steps that become executable in later phases are recorded as strict xfail with the phase
 that owns them, so the scenario's progress is visible in every test run.
 """
@@ -55,17 +56,13 @@ def test_steps_01_to_03_and_11md_create_persist_restart_export(workspace: Path) 
 
 
 PENDING = [
-    ("04", "ingest sources: import DOCX manuscript + knowledge sources", "02/04"),
+    ("04", "ingest knowledge sources (manuscript import is covered in test_acceptance_phase02)", "04"),
     ("05", "brief + outline generation with mock provider", "05"),
     ("06", "generate chapter draft into a proposal", "03/06"),
     ("07", "accept proposal -> ai_generated revision", "03"),
-    ("08", "human edit with table/equation/figure -> block IDs preserved", "02"),
-    ("09", "restore revision 2 as a new revision", "02"),
-    ("10", "restore revision 3 again", "02"),
-    ("11", "export EPUB, DOCX, PDF (+HTML)", "02/07"),
+    ("11", "export EPUB, DOCX, PDF (Markdown and HTML exports are covered)", "07"),
     ("12", "validate exports (preflight)", "07"),
     ("13", "KDP handoff package", "07"),
-    ("14", "backup -> restore as new project", "02"),
     ("15", "zero non-loopback egress across the whole run with AI enabled", "03"),
 ]
 

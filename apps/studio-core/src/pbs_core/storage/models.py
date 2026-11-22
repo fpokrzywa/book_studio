@@ -38,7 +38,7 @@ REVISION_ORIGINS = (
     "restored",
     "system_migration",
 )
-EXPORT_FORMATS = ("markdown",)
+EXPORT_FORMATS = ("markdown", "markdown_zip", "html")
 EXPORT_STATUSES = ("completed", "failed")
 BACKUP_KINDS = ("manual", "pre_migration", "pre_restore")
 
@@ -59,6 +59,7 @@ class Project(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     subtitle: Mapped[str | None] = mapped_column(Text)
     author_name: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
     project_type: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(Text, nullable=False, server_default="en")
     audience: Mapped[str | None] = mapped_column(Text)
@@ -224,3 +225,107 @@ class PurgeContext(Base):
     __tablename__ = "_purge_ctx"
 
     project_id: Mapped[str] = mapped_column(Text, primary_key=True)
+
+
+IMPORT_STATUSES = ("preview_ready", "committed", "failed", "cancelled")
+IMPORT_FORMATS = ("markdown", "text", "html", "docx", "pdf")
+
+
+class OriginalFile(Base):
+    """An uploaded file, stored byte-for-byte and content-addressed. Immutable (DB trigger)."""
+
+    __tablename__ = "original_file"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    sha256: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    original_name: Mapped[str] = mapped_column(Text, nullable=False)
+    detected_format: Mapped[str] = mapped_column(Text, nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    received_at: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ImportRun(Base):
+    __tablename__ = "import_run"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    original_file_id: Mapped[str] = mapped_column(Text, ForeignKey("original_file.id"), nullable=False)
+    project_id: Mapped[str | None] = mapped_column(Text, ForeignKey("project.id"))
+    target_project_id: Mapped[str | None] = mapped_column(Text, ForeignKey("project.id"))
+    importer: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    lossy: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    preview_json: Mapped[str] = mapped_column(Text, nullable=False)
+    report_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[str] = mapped_column(Text, nullable=False)
+    finished_at: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        CheckConstraint(_in("status", IMPORT_STATUSES), name="status"),
+        CheckConstraint(_in("importer", IMPORT_FORMATS), name="importer"),
+    )
+
+
+class Asset(Base):
+    """Image or media file owned by a project; referenced from text as ``asset:<short_hash>``."""
+
+    __tablename__ = "asset"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    project_id: Mapped[str] = mapped_column(Text, ForeignKey("project.id"), nullable=False)
+    sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    short_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    mime: Mapped[str] = mapped_column(Text, nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    width_px: Mapped[int | None] = mapped_column(Integer)
+    height_px: Mapped[int | None] = mapped_column(Integer)
+    original_name: Mapped[str | None] = mapped_column(Text)
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    import_run_id: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "id"),
+        UniqueConstraint("project_id", "sha256"),
+        UniqueConstraint("project_id", "short_hash"),
+    )
+
+
+class ChapterDraft(Base):
+    """Autosaved working copy (mutable). Saving turns it into an immutable revision."""
+
+    __tablename__ = "chapter_draft"
+
+    chapter_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False)
+    base_revision_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_md: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "chapter_id"],
+            ["chapter.project_id", "chapter.id"],
+            name="fk_draft_chapter",
+        ),
+    )
+
+
+class RevisionTag(Base):
+    """Label and note added to a revision after it was saved (the revision itself never changes)."""
+
+    __tablename__ = "revision_tag"
+
+    revision_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    project_id: Mapped[str] = mapped_column(Text, nullable=False)
+    label: Mapped[str | None] = mapped_column(Text)
+    note: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "revision_id"],
+            ["chapter_revision.project_id", "chapter_revision.id"],
+            name="fk_tag_revision",
+        ),
+    )

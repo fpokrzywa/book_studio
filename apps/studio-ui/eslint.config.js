@@ -13,6 +13,8 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Scrollable regions and code previews must be keyboard reachable (axe: scrollable-region-focusable).
+      "jsx-a11y/no-noninteractive-tabindex": ["error", { roles: ["tabpanel", "region"], tags: ["pre"] }],
       "no-restricted-syntax": [
         "error",
         {

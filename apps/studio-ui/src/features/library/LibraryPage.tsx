@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, Loading } from "../../components/States";
 import { FORMATS, n, PROJECT_TYPES } from "../../lib/format";
 import { ActivityList } from "../activity/ActivityList";
 import { ProjectVolume } from "./ProjectVolume";
+import { RestoreBackupButton } from "./RestoreBackupButton";
 
 const SORTS: { value: NonNullable<LibraryQuery["sort"]>; label: string }[] = [
   { value: "updated_at", label: "Last edited" },
@@ -71,9 +72,15 @@ export function LibraryPage() {
         title="Library"
         intro="Every book you are working on. Open one to write, or start something new."
         actions={
-          <Link to="/new" className="btn btn-primary">
-            New book
-          </Link>
+          <>
+            <Link to="/new" className="btn btn-primary">
+              New book
+            </Link>
+            <Link to="/import" className="btn">
+              Import a file
+            </Link>
+            <RestoreBackupButton />
+          </>
         }
       />
       <div className="library-layout">

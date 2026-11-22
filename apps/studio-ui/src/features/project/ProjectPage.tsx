@@ -1,20 +1,16 @@
-import { useId, useState, type CSSProperties, type FormEvent } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { Chapter, Project } from "../../api/client";
+import type { Project } from "../../api/client";
 import { ApiError } from "../../api/client";
 import {
   useActivity,
-  useArchiveChapter,
-  useChapters,
-  useCreateChapter,
-  useCreateExport,
   useDuplicateProject,
   useExports,
   useProject,
   useSetArchived,
-  useUpdateChapter,
   useUpdateProject,
 } from "../../api/hooks";
+import { useBackups, useCreateBackup, useExportAs } from "../../api/manuscript";
 import { useAnnounce } from "../../components/Announcer";
 import { ConfirmDialog, Dialog } from "../../components/Dialog";
 import { usePageTitle } from "../../components/Misc";
@@ -26,11 +22,11 @@ import {
   n,
   relativeTime,
   spineVar,
-  statusLabel,
   typeLabel,
   words,
 } from "../../lib/format";
 import { ActivityList } from "../activity/ActivityList";
+import { ManuscriptTree } from "./ManuscriptTree";
 import { initialValues, ProjectForm } from "./ProjectForm";
 
 export function ProjectPage() {
@@ -88,6 +84,7 @@ function ProjectView({ project }: { project: Project }) {
         <div>
           <h1>{project.title}</h1>
           {project.subtitle ? <p className="subtitle">{project.subtitle}</p> : null}
+          {project.description ? <p className="description">{project.description}</p> : null}
           <dl className="facts">
             <div>
               <dt>Author</dt>
@@ -122,6 +119,11 @@ function ProjectView({ project }: { project: Project }) {
             <button type="button" className="btn" disabled={archived} onClick={() => setEditing(true)}>
               Edit details
             </button>
+            {!archived ? (
+              <Link className="btn" to={`/import?into=${project.id}`}>
+                Import chapters
+              </Link>
+            ) : null}
             <button
               type="button"
               className="btn"
@@ -149,9 +151,10 @@ function ProjectView({ project }: { project: Project }) {
       </header>
 
       <div className="two-col">
-        <ChaptersSection project={project} />
+        <ManuscriptTree project={project} />
         <div className="stack">
           <ExportsSection project={project} />
+          <BackupSection project={project} />
           <section className="panel" aria-labelledby="project-activity">
             <h2 id="project-activity">History of this book</h2>
             <ProjectActivity projectId={project.id} />
@@ -204,209 +207,15 @@ function ProjectActivity({ projectId }: { projectId: string }) {
   return <ActivityList items={activity.data} showProject={false} />;
 }
 
-function ChaptersSection({ project }: { project: Project }) {
-  const chapters = useChapters(project.id);
-  const create = useCreateChapter(project.id);
-  const updateChapter = useUpdateChapter(project.id);
-  const archiveChapter = useArchiveChapter(project.id);
-  const announce = useAnnounce();
-  const navigate = useNavigate();
-  const [title, setTitle] = useState("");
-  const [titleError, setTitleError] = useState<string | null>(null);
-  const [renaming, setRenaming] = useState<Chapter | null>(null);
-  const [archiving, setArchiving] = useState<Chapter | null>(null);
-  const id = useId();
-  const readOnly = project.status === "archived";
-
-  function addChapter(e: FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) {
-      setTitleError("Give the chapter a title.");
-      return;
-    }
-    setTitleError(null);
-    create.mutate(title.trim(), {
-      onSuccess: (ch) => {
-        setTitle("");
-        announce(`Added chapter “${ch.title}”`);
-        navigate(`/projects/${project.id}/chapters/${ch.id}`);
-      },
-    });
-  }
-
-  return (
-    <section aria-labelledby={`${id}-chapters`}>
-      <h2 id={`${id}-chapters`} style={{ marginBottom: "var(--space-4)" }}>
-        Chapters
-      </h2>
-      {chapters.isPending ? (
-        <Loading label="Loading chapters" />
-      ) : chapters.isError ? (
-        <ErrorState error={chapters.error} onRetry={() => void chapters.refetch()} />
-      ) : chapters.data.length === 0 ? (
-        <p className="muted" style={{ marginBottom: "var(--space-4)" }}>
-          No chapters yet. Add the first one below; you can rename it any time.
-        </p>
-      ) : (
-        <ol className="toc">
-          {chapters.data.map((ch) => (
-            <li key={ch.id}>
-              <div>
-                <Link to={`/projects/${project.id}/chapters/${ch.id}`}>{ch.title}</Link>
-                <span className="meta">
-                  {statusLabel(ch.status)}, {words(ch.word_count)}
-                  {ch.head_revision_no > 0
-                    ? `, saved ${relativeTime(ch.updated_at)} (revision ${ch.head_revision_no})`
-                    : ", not saved yet"}
-                </span>
-              </div>
-              <div className="row-actions">
-                <button
-                  type="button"
-                  className="btn btn-small btn-quiet"
-                  disabled={readOnly}
-                  onClick={() => setRenaming(ch)}
-                  aria-label={`Rename ${ch.title}`}
-                >
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-small btn-quiet"
-                  disabled={readOnly}
-                  onClick={() => setArchiving(ch)}
-                  aria-label={`Archive ${ch.title}`}
-                >
-                  Archive
-                </button>
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
-      {!readOnly ? (
-        <form className="add-chapter" onSubmit={addChapter} noValidate>
-          <div className="field">
-            <label htmlFor={`${id}-new`}>New chapter title</label>
-            <input
-              id={`${id}-new`}
-              type="text"
-              value={title}
-              maxLength={300}
-              aria-invalid={titleError ? true : undefined}
-              aria-describedby={titleError ? `${id}-new-error` : undefined}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            {titleError ? (
-              <span className="error" id={`${id}-new-error`}>
-                {titleError}
-              </span>
-            ) : null}
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={create.isPending}>
-            Add chapter
-          </button>
-        </form>
-      ) : null}
-      {create.isError ? <InlineError error={create.error} /> : null}
-
-      <RenameDialog
-        chapter={renaming}
-        busy={updateChapter.isPending}
-        error={updateChapter.error}
-        onClose={() => {
-          setRenaming(null);
-          updateChapter.reset();
-        }}
-        onSave={(cid, newTitle) =>
-          updateChapter.mutate(
-            { cid, title: newTitle },
-            {
-              onSuccess: (ch) => {
-                setRenaming(null);
-                announce(`Renamed chapter to “${ch.title}”`);
-              },
-            },
-          )
-        }
-      />
-      <ConfirmDialog
-        isOpen={archiving !== null}
-        title={`Archive chapter “${archiving?.title ?? ""}”?`}
-        body="The chapter is removed from the table of contents and from exports. Its saved revisions are kept in the database."
-        confirmLabel="Archive chapter"
-        busy={archiveChapter.isPending}
-        onCancel={() => setArchiving(null)}
-        onConfirm={() =>
-          archiving &&
-          archiveChapter.mutate(archiving.id, {
-            onSuccess: () => {
-              announce(`Archived chapter “${archiving.title}”`);
-              setArchiving(null);
-            },
-          })
-        }
-      />
-    </section>
-  );
-}
-
-function RenameDialog({
-  chapter,
-  busy,
-  error,
-  onClose,
-  onSave,
-}: {
-  chapter: Chapter | null;
-  busy: boolean;
-  error: unknown;
-  onClose: () => void;
-  onSave: (cid: string, title: string) => void;
-}) {
-  const [value, setValue] = useState("");
-  const [lastId, setLastId] = useState<string | null>(null);
-  const id = useId();
-  if (chapter && chapter.id !== lastId) {
-    setLastId(chapter.id);
-    setValue(chapter.title);
-  }
-  return (
-    <Dialog isOpen={chapter !== null} onClose={onClose} title="Rename chapter">
-      <form
-        className="form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (chapter && value.trim()) onSave(chapter.id, value.trim());
-        }}
-      >
-        {error ? <InlineError error={error} /> : null}
-        <div className="field">
-          <label htmlFor={`${id}-title`}>Chapter title</label>
-          <input
-            id={`${id}-title`}
-            type="text"
-            value={value}
-            maxLength={300}
-            onChange={(e) => setValue(e.target.value)}
-          />
-        </div>
-        <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={busy || !value.trim()}>
-            Rename
-          </button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
+const FORMAT_LABEL = {
+  markdown: "Markdown",
+  markdown_zip: "Markdown with images (ZIP)",
+  html: "HTML",
+} as const;
 
 function ExportsSection({ project }: { project: Project }) {
   const exportsQuery = useExports(project.id);
-  const create = useCreateExport(project.id);
+  const create = useExportAs(project.id);
   const announce = useAnnounce();
   const id = useId();
   const latest = create.data;
@@ -415,21 +224,26 @@ function ExportsSection({ project }: { project: Project }) {
     <section className="panel" aria-labelledby={`${id}-exports`}>
       <h2 id={`${id}-exports`}>Export</h2>
       <p className="muted" style={{ marginBottom: "var(--space-4)" }}>
-        Markdown export puts every chapter, in order, into one file with its exact text. EPUB, DOCX and print
-        PDF arrive in Phase 07.
+        Every chapter in book order. Markdown keeps your exact text (images go in a ZIP alongside it); HTML is
+        a single page with images included. EPUB, DOCX and print PDF arrive in Phase 07.
       </p>
-      <button
-        type="button"
-        className="btn btn-primary"
-        disabled={create.isPending}
-        onClick={() =>
-          create.mutate(undefined, {
-            onSuccess: (exp) => announce(`Exported Markdown: ${exp.file_name ?? ""}`),
-          })
-        }
-      >
-        {create.isPending ? "Exporting…" : "Export Markdown"}
-      </button>
+      <div className="page-actions">
+        {(["markdown", "html"] as const).map((fmt) => (
+          <button
+            key={fmt}
+            type="button"
+            className={fmt === "markdown" ? "btn btn-primary" : "btn"}
+            disabled={create.isPending}
+            onClick={() =>
+              create.mutate(fmt, {
+                onSuccess: (exp) => announce(`Exported ${FORMAT_LABEL[exp.format]}: ${exp.file_name ?? ""}`),
+              })
+            }
+          >
+            Export {fmt === "markdown" ? "Markdown" : "HTML"}
+          </button>
+        ))}
+      </div>
       {create.isError ? <InlineError error={create.error} /> : null}
       {latest?.download_url ? (
         <p style={{ marginTop: "var(--space-3)" }}>
@@ -440,9 +254,7 @@ function ExportsSection({ project }: { project: Project }) {
       ) : null}
       {exportsQuery.data && exportsQuery.data.length > 0 ? (
         <>
-          <h3 style={{ margin: "var(--space-5) 0 var(--space-3)", fontSize: "var(--step-0)" }}>
-            Earlier exports
-          </h3>
+          <h3 className="subhead">Earlier exports</h3>
           <ul className="exports">
             {exportsQuery.data.slice(0, 5).map((e) => (
               <li key={e.id}>
@@ -454,13 +266,14 @@ function ExportsSection({ project }: { project: Project }) {
                   e.file_name
                 )}{" "}
                 <span className="muted">
+                  {FORMAT_LABEL[e.format]},{" "}
                   <time dateTime={e.started_at} title={absoluteTime(e.started_at)}>
                     {relativeTime(e.started_at)}
                   </time>
                   , {e.chapter_count === 1 ? "1 chapter" : `${e.chapter_count} chapters`}
                 </span>
                 {e.warnings.map((w) => (
-                  <span className="warn" key={w} style={{ display: "block" }}>
+                  <span className="warn block" key={w}>
                     {w}
                   </span>
                 ))}
@@ -468,6 +281,50 @@ function ExportsSection({ project }: { project: Project }) {
             ))}
           </ul>
         </>
+      ) : null}
+    </section>
+  );
+}
+
+function BackupSection({ project }: { project: Project }) {
+  const backups = useBackups(project.id);
+  const create = useCreateBackup(project.id);
+  const announce = useAnnounce();
+  const id = useId();
+  return (
+    <section className="panel" aria-labelledby={`${id}-backup`}>
+      <h2 id={`${id}-backup`}>Backup</h2>
+      <p className="muted" style={{ marginBottom: "var(--space-4)" }}>
+        One file with every chapter, every revision, images and original imports, with checksums. Restoring
+        always creates a new book; it never replaces this one. Restore from the Library page.
+      </p>
+      <button
+        type="button"
+        className="btn"
+        disabled={create.isPending}
+        onClick={() =>
+          create.mutate(undefined, { onSuccess: (b) => announce(`Backup created: ${b.file_name}`) })
+        }
+      >
+        {create.isPending ? "Creating backup…" : "Create backup"}
+      </button>
+      {create.isError ? <InlineError error={create.error} /> : null}
+      {backups.data && backups.data.length > 0 ? (
+        <ul className="exports" style={{ marginTop: "var(--space-4)" }}>
+          {backups.data.slice(0, 5).map((b) => (
+            <li key={b.id}>
+              <a href={b.download_url} download={b.file_name}>
+                {b.file_name}
+              </a>{" "}
+              <span className="muted">
+                <time dateTime={b.created_at} title={absoluteTime(b.created_at)}>
+                  {relativeTime(b.created_at)}
+                </time>
+                , {(b.byte_size / 1024).toFixed(0)} KB
+              </span>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </section>
   );

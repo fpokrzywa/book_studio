@@ -41,6 +41,8 @@ Status: Draft v0.1 (Phase 00). Principle: **report real results only.** A test t
 | `mock-ai/*.json` | Deterministic outputs for outline, draft, revise, review | Jobs, scenario |
 | `db/rev_<id>.db` | Synthetic DB at each released schema head | Migration |
 
+**As built (Phase 02):** `fixtures/generate.py` writes the binary and HTML fixtures deterministically. They are synthetic, created for this project. The set: `bookmd/kitchen-sink.md`, `import/multi-chapter.{html,md}`, `import/sample.docx` (with an injected Word equation), `import/{text,scanned,encrypted}.pdf`, `malicious/{legacy.doc, zipbomb.docx, traversal.docx, xxe.docx, injection.html}`, `images/engine.png`. Regenerate them with the Core venv: `apps/studio-core/.venv/Scripts/python.exe fixtures/generate.py`.
+
 ## 4. Key test cases by area
 
 ### 4.1 Persistence and isolation (Phase 01)

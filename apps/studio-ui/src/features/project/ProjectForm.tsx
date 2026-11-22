@@ -7,6 +7,7 @@ export interface ProjectFormValues {
   title: string;
   subtitle: string;
   author_name: string;
+  description: string;
   project_type: ProjectType;
   language: string;
   audience: string;
@@ -19,6 +20,7 @@ export function initialValues(p?: Project): ProjectFormValues {
     title: p?.title ?? "",
     subtitle: p?.subtitle ?? "",
     author_name: p?.author_name ?? "",
+    description: p?.description ?? "",
     project_type: p?.project_type ?? "nonfiction",
     language: p?.language ?? "en",
     audience: p?.audience ?? "",
@@ -51,6 +53,7 @@ export function toPayload(v: ProjectFormValues): ProjectCreate {
     title: v.title.trim(),
     subtitle: opt(v.subtitle),
     author_name: opt(v.author_name),
+    description: v.description.trim() ? v.description.trim() : null,
     project_type: v.project_type,
     language: v.language.trim(),
     audience: opt(v.audience),
@@ -142,6 +145,16 @@ export function ProjectForm({ initial, submitLabel, busy, serverError, onSubmit,
             maxLength={200}
           />
         </div>
+      </div>
+      <div className="field">
+        <label htmlFor={`${id}-description`}>Short description</label>
+        <textarea
+          {...fieldProps("description")}
+          rows={3}
+          value={values.description}
+          onChange={(e) => set("description", e.target.value)}
+          maxLength={4000}
+        />
       </div>
       <div className="form-row">
         <div className="field">

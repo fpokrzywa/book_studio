@@ -85,6 +85,26 @@ export async function call<T>(
   } as Problem);
 }
 
+/** Multipart upload (openapi-fetch's JSON client is not used for files). */
+export async function upload<T>(
+  path: string,
+  file: File | Blob,
+  name: string,
+  fields: Record<string, string> = {},
+): Promise<T> {
+  const form = new FormData();
+  form.append("file", file, name);
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  return call<T>(
+    globalThis
+      .fetch(new URL(path, origin()).toString(), { method: "POST", body: form })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        return response.ok ? { data: body as T, response } : { error: body, response };
+      }),
+  );
+}
+
 export function errorMessage(err: unknown): { title: string; detail?: string } {
   if (err instanceof ApiError) {
     return { title: err.problem.title, detail: err.problem.detail };

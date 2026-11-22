@@ -143,6 +143,15 @@ The full schema is in `DATA_MODEL.md §4`. Summary:
 - **Block-ID reconciliation**: on save, the new BDM's blocks are matched to the previous revision's blocks (explicit `{#id}` first, then exact content hash, then position + similarity). Matched blocks keep their IDs; new blocks get new ULIDs. Citations, annotations, evidence links and comments anchor to block IDs.
 - **Round-trip invariant** (tested on every fixture): `parse(serialize(parse(md))) == parse(md)` structurally, and `serialize(parse(md))` is idempotent after one normalization pass. Any node a renderer cannot represent raises a typed `FidelityWarning`, which is shown to the user and recorded in the export report.
 
+### 4.1 As built in Phase 02
+
+- **Editor:** CodeMirror 6 edits the BookMD source directly, with an optional plain-textarea mode. The preview is rendered by Core (`POST /api/projects/{id}/preview`) using the export renderer (ADR-0002).
+- **Autosave vs revisions:** typing autosaves after 1.5 s to `chapter_draft` (mutable, one per chapter, guarded by `base_revision_no`). Only Save (or restore/import) appends an immutable `chapter_revision`. A draft survives restarts and is offered back on reopen.
+- **History:** list, label and note (`revision_tag`), side-by-side diff with word-level highlights (`domain/diff.py`), and restore-as-new-revision (`origin=restored`).
+- **Tree:** `chapter.parent_id` (max depth 3: part > chapter > section) plus a fractional `position`. Moving a chapter changes only those two columns.
+- **Imports:** `importers/` (markdown, text, html, docx via mammoth → html, pdf via pypdf) are deterministic: the preview is exactly what commit creates. Commit re-runs the importer to obtain embedded images and refuses if the output differs.
+- **Backup/restore:** `services/backup.py`, ZIP `manifest/1`, restore into a new project with ID remapping (ARCHITECTURE §3 boundaries unchanged).
+
 ## 5. Export pipeline
 
 ```mermaid

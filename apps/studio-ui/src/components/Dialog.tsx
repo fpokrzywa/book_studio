@@ -8,6 +8,7 @@ interface DialogProps {
   children: ReactNode;
   role?: "dialog" | "alertdialog";
   dismissable?: boolean;
+  wide?: boolean;
 }
 
 /** Accessible modal (focus trap, Escape, focus restore) built on React Aria. */
@@ -18,6 +19,7 @@ export function Dialog({
   children,
   role = "dialog",
   dismissable = true,
+  wide = false,
 }: DialogProps) {
   return (
     <ModalOverlay
@@ -29,7 +31,7 @@ export function Dialog({
       isDismissable={dismissable}
       isKeyboardDismissDisabled={!dismissable}
     >
-      <Modal className="modal">
+      <Modal className={wide ? "modal modal-wide" : "modal"}>
         <AriaDialog role={role} aria-label={title} style={{ outline: "none" }}>
           <Heading slot="title">{title}</Heading>
           {children}

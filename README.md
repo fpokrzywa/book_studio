@@ -2,7 +2,28 @@
 
 A private, local-first studio for writing books, from idea to a validated publishing package. Single user, no accounts, no cloud sync. Everything you write is stored on your own disk.
 
-**Status: Phase 01.** The project library, chapters, revision-safe saving and Markdown export work. Research, Knowledge, Publishing and AI settings are visibly marked "Not yet implemented" in the app. See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/BUILD_STATE.md](docs/BUILD_STATE.md).
+**Status: Phase 02.** These work today:
+
+- **Library:** create, search, archive and duplicate books.
+- **Manuscript tree:** parts, chapters and sections, reordered with drag-and-drop or buttons.
+- **Editor:** a Markdown editor with live preview. It handles tables, math, citations, footnotes and images with alt text and captions.
+- **Saving:** autosaved drafts, plus immutable revisions you can compare, label and restore.
+- **Import:** Markdown, text, HTML, Word (.docx) and text-based PDF.
+- **Export:** Markdown (zipped with images) and HTML.
+- **Backup:** one-file backup and restore.
+
+Research, Knowledge, Publishing and AI settings are visibly marked "Not yet implemented". See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/BUILD_STATE.md](docs/BUILD_STATE.md).
+
+### Using the studio
+
+| Task | Where |
+|---|---|
+| Write | Open a chapter. Type Markdown on the left and see the preview on the right (switch with Write / Write and preview / Preview). Changes autosave as a draft; **Save** (Ctrl+S / Cmd+S) keeps a revision |
+| Images | **Insert image** in the editor. The image is copied into the book and you give a caption and alt text |
+| Versions | **History** in the editor: compare any two revisions side by side, add labels or notes, and restore an old version as a new revision (nothing is overwritten) |
+| Arrange chapters | On the book page, drag a chapter or use **Up**, **Down**, **Indent** and **Outdent**. **Details** edits the title, slug, status and target length |
+| Import | **Import** in the menu (or **Import chapters** on a book). You see the detected chapters, warnings and possible duplicates before anything is added. The uploaded file is kept unchanged |
+| Back up / restore | **Create backup** on a book page. **Restore a backup** on the Library page always creates a new book |
 
 ## What's in the box
 
@@ -131,7 +152,7 @@ The UI dev server reads `PBS_WORKSPACE`, `PBS_CORE_URL` (default `http://127.0.0
   runtime/             per-launch session token (user-only permissions)
 ```
 
-To back up everything by hand, stop the app and copy the workspace folder. A one-click project backup arrives in Phase 02.
+Also in the workspace: `originals/` (every imported file, byte-for-byte and read-only), `projects/<id>/assets/` (images, named by content hash) and `backups/` (project backups). To back up everything by hand, stop the app and copy the workspace folder. For one book, use **Create backup**.
 
 ## Troubleshooting
 

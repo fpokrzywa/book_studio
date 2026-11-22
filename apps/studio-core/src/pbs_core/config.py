@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     ui_origins: list[str] = ["http://127.0.0.1:5173", "http://localhost:5173"]
     log_level: str = "INFO"
     log_console: bool = True
+    max_upload_mb: int = 200
+    max_backup_mb: int = 4096
 
     @field_validator("host")
     @classmethod
