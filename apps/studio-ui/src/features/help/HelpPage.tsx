@@ -21,8 +21,25 @@ export function HelpPage() {
             and an earlier revision is never changed or deleted.
           </p>
           <p>
-            <strong>Export Markdown</strong> on a book&apos;s page writes every chapter, in order, into one
-            Markdown file containing exactly the text you typed.
+            Typing is <strong>autosaved as a draft</strong> after a moment, so a crash or a closed tab does
+            not lose it; you are offered the draft when you come back. <strong>History</strong> in the editor
+            compares any two revisions side by side, lets you label them, and restores an old version as a new
+            revision.
+          </p>
+          <p>
+            Markdown covers headings, lists, task lists (<code>- [ ]</code>), quotes, links, tables (add a{" "}
+            <code>: Caption</code> line below), code blocks, math (<code>$E = mc^2$</code>), citations (
+            <code>[@key, p. 3]</code>), footnotes (<code>[^1]</code>) and images (
+            <strong>Insert image</strong>
+            ). Formatting notes under the preview point out anything that would be lost or is inaccessible,
+            such as an image without alt text.
+          </p>
+          <p>
+            <strong>Import</strong> reads Markdown, text, HTML, Word (.docx) and text-based PDF files. You see
+            the detected chapters and any warnings before anything is added, and the original file is kept
+            unchanged. <strong>Export</strong> produces Markdown (with images in a ZIP) or a single HTML page.{" "}
+            <strong>Create backup</strong> saves a book with its full history; restoring always creates a new
+            book.
           </p>
           <p>
             <strong>Archive</strong> moves a book out of the active library and makes it read-only. Nothing is
@@ -38,8 +55,8 @@ export function HelpPage() {
           <h2>Not available yet</h2>
           <p>
             Research, Knowledge, Publishing and AI settings appear in the menu as &ldquo;Not yet
-            implemented&rdquo;. Each is built in a later phase. Imports, revision comparison and restore,
-            backups, and EPUB, DOCX and PDF exports are also still to come.
+            implemented&rdquo;. Each is built in a later phase. EPUB, DOCX and print PDF exports arrive in
+            Phase 07; scanned PDFs (which need text recognition) and Word equations cannot be imported yet.
           </p>
           <h2>If something goes wrong</h2>
           <p>

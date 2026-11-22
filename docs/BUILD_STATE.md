@@ -6,11 +6,95 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **01: Scaffold, shell, project library, vertical slice: COMPLETE (pending user review)** |
-| Next phase | 02: Editor, BookMD/BDM fidelity, revisions/diff/restore, imports, backup/restore, export-engine spikes |
-| Branch | `phase/01-scaffold` (from `main` @ Phase 00 docs) |
-| Platforms verified | Windows 11 x64 only. macOS scripts (`*.sh`) are written but **not executed** (no Mac available) |
+| Current phase | **02: Editor, document model, history, imports, backup/restore: COMPLETE (pending user review)** |
+| Next phase | 03: AI providers, egress gate, keyring, routing, cost, durable jobs, proposals |
+| Branch | `phase/02-editor-import-backup`, stacked on `phase/01-scaffold` (PR #1, not merged yet) |
+| Schema | Alembic head `0003`. The existing dev workspace migrated 0002 → 0003 automatically with a snapshot |
+| Platforms verified | Windows 11 x64 only. macOS scripts are written but **not executed** |
 | Last updated | 2026-11-22 |
+
+## Phase 02 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 73 files already formatted |
+| mypy `--strict` (51 source files) | Success: no issues found |
+| import-linter | 3 kept, 0 broken |
+| pytest (Core) | **135 passed, 8 xfailed** (8 = golden-path steps owned by Phases 03–07, strict xfail) |
+| License gate | passed: 83 runtime dependencies (adds mammoth BSD-2, pypdf BSD-3, nh3 MIT, latex2mathml MIT, python-multipart Apache-2.0, defusedxml PSF, CodeMirror MIT) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **18 passed** (5 files) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **7 passed** (2 new Phase 02 specs + 5 Phase 01 specs adapted to the new editor) |
+
+### Prompt 02 acceptance → evidence
+
+| Acceptance item | Where it is proven |
+|---|---|
+| Import a multi-chapter fixture with a table, image/caption, code block, citation and math; edit; save; restart; round-trip; verify preservation | `tests/test_acceptance_phase02.py` (API, with a real restart of the app context), and Playwright `manuscript.spec.ts` (UI import → edit in CodeMirror → **hard-kill Core** → reload → recovered draft + saved revision → exports) |
+| Restore a previous revision; the newer revision remains in history | same two tests, plus `test_manuscript.py::test_restore_creates_new_revision_and_keeps_history` |
+| Reorder chapters; content/asset/citation references stay stable | `test_manuscript.py::test_reorder_does_not_orphan_references`, the acceptance test (re-parent + reorder + HTML export resolves image and citation), Playwright (buttons **and** drag-and-drop) |
+| Backup → restore gives an equivalent manuscript and metadata | `test_backup.py::test_backup_then_restore_is_equivalent_and_never_overwrites` (compares every chapter, revision, label, note, draft, tree position, asset and metadata field), Playwright (UI backup download → Library restore) |
+| Canonical schema round-trips without silent loss | `test_document_engine.py`: kitchen-sink fixture, plus a **150-example hypothesis property test** of serialize→parse identity. It found and fixed two real bugs: braces/quotes in attribute values, and tight-list item joining |
+| Unsafe links, script injection, zip bombs, path traversal, size limits, encrypted/unreadable files | `test_imports.py` (scanned/encrypted PDF, legacy .doc, zip bomb, traversal, XXE, injection HTML, 413 over the limit, SVG refused), `test_backup.py` (tampered checksum, unlisted file, missing manifest, newer schema, unsafe archive paths, not-a-zip), Playwright "hostile and unreadable files" |
+| Originals preserved, import reports, duplicates | `test_imports.py` (byte-identical download, DB immutability triggers, `previously_imported_at`, same-text and same-title duplicate detection) |
+
+## Phase 02: what was built
+
+**Core**
+- `document/bookmd.py`: bookmd-1 → `bdm/1` (headings with anchors, paragraphs, tight/loose and task lists, quotes, GFM tables with alignment and captions, fenced code with language and attributes, inline and display math with labels, footnotes, citations with locators and author suppression, figures with alt ≠ caption, fenced divs, unsupported blocks kept verbatim). Fidelity warnings: missing alt, web/unresolved images, missing footnotes, duplicate anchors, unsafe links.
+- `document/serialize.py` (normal-form writer, used by imports) and `document/html.py` (renderer + nh3 sanitizer, MathML via latex2mathml, inert unsafe links, no external image loads).
+- Migration `0003`: originals, imports, assets, drafts, revision tags, project description, export formats, original-file immutability triggers.
+- Services: chapter tree (part/chapter/section, max depth 3) and move/reorder; slug, title, status, kind and target edits; subtree archive; autosave drafts with conflict detection; revision list/get/compare (side-by-side, word-level)/restore-as-new/tag; preview; assets (content-addressed raster images); exports (Markdown or Markdown+images ZIP; standalone HTML with embedded images and a CSP); imports (md, txt, html, docx via mammoth, text PDF via pypdf); backup ZIP (manifest/1) and restore-as-new-project with ID remapping.
+- `security/archive.py` (zip inspection, capped reads, DTD/XXE rejection); chunked upload limits (413).
+- `fixtures/generate.py` and checked-in synthetic fixtures.
+
+**UI**
+- Book page: manuscript tree with drag-and-drop **and** Up/Down/Indent/Outdent buttons, chapter details (title, slug, status, target), nesting with progress bars, Markdown/HTML export, backups, and Import chapters.
+- Editor: CodeMirror 6 source editor (Tab not captured) with a plain-textarea mode; Write / Write and preview / Preview views; Core-rendered preview with formatting notes; autosave drafts with recovery and stale-draft banners; Save/Ctrl+S; conflict dialog; a leave guard that offers "keep as draft" or "save revision"; Insert image (alt text required); History dialog (labels and notes, side-by-side diff using `<del>`/`<ins>`, restore as new); chapter quick-nav with previous/next.
+- Import page (file input + drop zone, target book, preview with warnings, lossy notice, duplicates, per-chapter include, commit or cancel) and Library "Restore a backup".
+- Navigation: **Import** added. Help text updated.
+
+**Docs:** ADR-0002 (editor), ADR-0003 (export-engine spikes), plus as-built notes in DATA_MODEL, ARCHITECTURE, SECURITY, TEST_PLAN, ROADMAP and README.
+
+## Decisions taken in Phase 02 (need your validation)
+
+| # | Decision | Why | Reversible? |
+|---|---|---|---|
+| P2-1 | Source editor (CodeMirror) + Core preview instead of WYSIWYG (ADR-0002) | Lossless by construction; one renderer | Yes. A WYSIWYG must pass the fidelity suite first |
+| P2-2 | Autosave writes a **draft** (mutable working copy). Only Save/restore/import create revisions | Keeps history meaningful (not one revision per keystroke) while never losing typing | Yes |
+| P2-3 | Images referenced by **content hash** (`asset:<16 hex>`) | Duplicate, backup and restore need no text rewriting | Costly to change later |
+| P2-4 | Originals stored workspace-wide (not per project), content-addressed, read-only | An upload exists before its project; dedupe | Yes |
+| P2-5 | Restore always creates a new project titled "… (restored)", set to active | "No silent overwrite" | Yes |
+| P2-6 | PDF import is text only and always marked lossy; scanned PDFs are refused (no OCR) | Honest about limits | Yes, later |
+| P2-7 | Recommend **Typst** as the Phase 07 print-PDF engine (ADR-0003, D7) | WeasyPrint failed without GTK on Windows; the Typst wheel works offline | Decide in Phase 07 |
+
+Still open from earlier: D6 (install Pandoc), D12 (public repo), D14 (prompt pack location), LICENSE choice.
+
+## Known limitations (Phase 02, honest list)
+
+1. **No WYSIWYG.** Writers edit Markdown with a live preview (ADR-0002).
+2. **Word equations are not imported** (mammoth cannot convert OMML). They are detected and reported. Pandoc-based import would fix this (D6).
+3. **PDF import recovers text only.** Headings are guessed from "Chapter …" lines; tables, images and footnotes are lost (reported). No OCR.
+4. **HTML/DOCX import limits:** merged table cells are split (reported); sub/superscript and definition lists become plain text (reported); display math inside a paragraph becomes inline math.
+5. **Citations are kept as keys.** Rendering is `(key, locator)`; bibliography formatting and key resolution arrive in Phase 04.
+6. **No standalone annotation table** (comments on blocks). Revision labels and notes cover "revision labels and notes"; block annotations are deferred.
+7. **Autosave conflict handling is last-writer-wins between two open tabs on the same base revision.** A later Save in either tab is still protected by the 409 check.
+8. Drag-and-drop reorders among siblings and adopts the target's parent; nesting is done with Indent/Outdent. A drop "into" a chapter is not offered.
+9. The footnote back-link renders on its own line in the preview (cosmetic).
+10. macOS has not been run. Linux has not been run.
+11. EPUB, DOCX and print PDF exports are Phase 07.
+12. The stray `.pbs-test-run.log` from Phase 01 may still be at the repo root (git-ignored).
+
+## Phase 03 handoff
+
+Preserve: the `/api` contracts (regenerate TS with `scripts/gen-api`); the revision triggers (the AI-origin rule already requires `accepted_proposal_id`, which Phase 03's `proposal` table must satisfy); drafts are **not** revisions; `bookmd`/`bdm/1` invariants and the property test; `security/archive.py` and the upload caps; the import determinism check at commit.
+
+Start Phase 03 with: the `proposal` and `job` tables (migration 0004); the egress gate before any HTTP client (keep the import-linter contract, adding an exception only for `pbs_core.providers`); the mock provider first; and AI output written as a proposal diffed against the head revision, using the same side-by-side diff component as History.
+
+---
 
 ## Phase 01 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13, pnpm 10.33)
 
@@ -112,6 +196,20 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 02: Editor, document model, history, imports, backup (2026-11-22)
+- Built as described in "Phase 02: what was built" on `phase/02-editor-import-backup` (a WIP checkpoint commit, then a final commit).
+- Verified in the real browser by hand (imported fixture → tree → editor split view with rendered math, citation, figure caption and footnotes) and with Playwright.
+- Bugs found and fixed during the phase:
+  - the property test found two serializer bugs (attribute values containing braces or quotes; tight lists with nested blocks);
+  - the dollarmath plugin's first-character digit check (replaced by a currency guard);
+  - inline-image alt text was lost;
+  - explicit alt text set by the attrs plugin was ignored;
+  - nested-transaction deadlock when an import created a project (moved project creation into the same transaction);
+  - empty `<ins>` elements in the diff view;
+  - axe: the scrollable diff region was not keyboard-focusable;
+  - read-only originals blocked the e2e workspace wipe.
+- Spikes recorded in ADR-0003.
 
 ### Phase 01: Scaffold and vertical slice (2026-11-22)
 - Built backend, frontend, scripts and tests as described above, on branch `phase/01-scaffold`.

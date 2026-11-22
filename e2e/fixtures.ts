@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { test as base, expect } from "@playwright/test";
 
@@ -61,7 +61,17 @@ export class Core {
   }
 
   wipe(): void {
+    makeWritable(this.workspace); // preserved originals are read-only on disk
     rmSync(this.workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }
+}
+
+function makeWritable(dir: string): void {
+  if (!existsSync(dir)) return;
+  for (const name of readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (statSync(full).isDirectory()) makeWritable(full);
+    else chmodSync(full, 0o666);
   }
 }
 

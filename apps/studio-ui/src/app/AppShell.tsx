@@ -12,6 +12,7 @@ interface NavItem {
 const WORKING: NavItem[] = [
   { to: "/", label: "Library", end: true },
   { to: "/new", label: "New book" },
+  { to: "/import", label: "Import" },
   { to: "/manuscripts", label: "Manuscripts" },
   { to: "/activity", label: "Activity" },
   { to: "/help", label: "Help" },
@@ -43,7 +44,7 @@ export function AppShell() {
             <small>Your books, on this computer</small>
           </NavLink>
           <ul>
-            {WORKING.slice(0, 3).map((item) => (
+            {WORKING.slice(0, 4).map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} end={item.end} className="nav-link">
                   {item.label}
@@ -68,7 +69,7 @@ export function AppShell() {
             Studio
           </p>
           <ul aria-labelledby="studio-label">
-            {WORKING.slice(3).map((item) => (
+            {WORKING.slice(4).map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} className="nav-link">
                   {item.label}

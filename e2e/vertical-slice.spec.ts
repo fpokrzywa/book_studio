@@ -53,7 +53,7 @@ test("vertical slice: create book, write chapter, save, restart Core, content pe
 
   const editor = page.getByLabel("Chapter text (Markdown)");
   await editor.fill(CHAPTER_TEXT);
-  await expect(page.getByText("Unsaved changes")).toBeVisible();
+  await expect(page.getByText(/Unsaved changes|Draft autosaved/)).toBeVisible();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText(/Saved as revision 1/)).toBeVisible();
   await expectNoA11yViolations(page);
@@ -61,6 +61,8 @@ test("vertical slice: create book, write chapter, save, restart Core, content pe
   // Crash Core hard, start it again on the same workspace, reload the page.
   await core.restart();
   await page.reload();
+  // The plain-text editor exposes the exact stored text as a form value.
+  await page.getByLabel("Plain text editor").check();
   await expect(page.getByLabel("Chapter text (Markdown)")).toHaveValue(CHAPTER_TEXT);
   await expect(page.getByText(/Saved as revision 1/)).toBeVisible();
 

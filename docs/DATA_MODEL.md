@@ -110,7 +110,11 @@ Indexes: `(status, updated_at)`. Library search (as built) is a case-folded subs
 
 **Migrations as built (Phase 01):** `0001_baseline` creates `project`, `chapter`, `chapter_revision`, `activity_event`, `export_run`, `app_setting` and `_purge_ctx`, plus four triggers: revision immutability (UPDATE and DELETE), the AI-origin rule that requires `accepted_proposal_id`, and sequential `revision_no`. `0002_backup_run` adds `backup_run` (the manifest/1 bookkeeping table; the ZIP writer is Phase 02). Revisions written in Phase 01 carry `parser_version="bookmd-0.1"` and a provisional `bdm/0` structure: top-level blocks with exact source spans, IDs reused for unchanged blocks. Phase 02 introduces bookmd-1 / `bdm/1` and re-derives BDM lazily from `source_md`.
 
-### 2.2 Phase 02 tables
+**As built in Phase 02 (migration `0003_phase02`):** `original_file` (workspace-level and content-addressed, since an upload exists before a project does; immutable via triggers and a read-only file), `import_run` (`target_project_id` set at upload, `project_id` set at commit, `preview_json` = proposed chapters, `report_json` = warnings and errors), `asset` (adds `short_hash` = the first 16 hex characters of the SHA-256, unique per project), `chapter_draft` (one mutable autosave working copy per chapter: `base_revision_no`, `source_md`), `revision_tag` (label and note added after a save; the revision row never changes), `project.description`, and `export_run.format ∈ {markdown, markdown_zip, html}`. Not built: `annotation` (no UI needs it yet) and `backup_run` changes (it already existed).
+
+**Asset references are content hashes.** Text refers to images as `asset:<short_hash>`. Duplicating a project, restoring a backup or moving chapters therefore never rewrites manuscript text: the same bytes have the same reference in every project.
+
+### 2.2 Phase 02 tables (design intent; see "as built" above)
 
 - **`asset`**: `id, project_id, sha256, mime, byte_size, width_px, height_px, original_name, storage_path (relative), alt_text_default, license_note, created_at`. `UNIQUE(project_id, sha256)`.
 - **`original_file`** (immutable): `id, project_id, sha256, original_name, mime_detected, byte_size, storage_path, received_at`.
@@ -198,6 +202,15 @@ Each transition is written in one transaction together with a `job_log` row.
 `suggested → canon (author approves) | rejected`. Only `canon` facts are used as continuity ground truth.
 
 ## 4. Editing document schema: BookMD and BDM
+
+**As built (Phase 02):** `pbs_core/document/bookmd.py` (parser, `bookmd-1.0` → `bdm/1`), `serialize.py` (bdm/1 → BookMD normal form) and `html.py` (renderer + nh3 sanitizer). Differences from the design below:
+
+- Figure: `![Caption](asset:<16 hex>){#fig-id alt="Alt" width="60%"}`. Attribute values are entity-escaped (`&quot; &#123; &#125; &amp;`), so quotes and braces cannot end the attribute block (a bug found by the property test).
+- Display-math anchors use the plugin's label syntax: `$$ … $$ (eq-id)`.
+- Currency guard: `$5 and $6` stays text. The plugin's own digit check misreads the first character of a line, so PBS applies the rule itself.
+- Footnote references without a definition stay literal text and raise `missing_footnote`.
+- Revisions written in Phase 01 (`bdm/0`) are re-derived from their source text on read (`documents.bdm_of`); stored rows are never rewritten.
+- Known limits: no definition lists, sub/superscript or merged table cells (imports report them); a paragraph-level `{#id}` is not supported (use headings, figures, tables, code, math and divs for anchors).
 
 ### 4.1 BookMD (authoring dialect, `bookmd-1`)
 

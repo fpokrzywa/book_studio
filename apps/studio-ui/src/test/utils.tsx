@@ -17,7 +17,8 @@ export function mockApi(handlers: Record<string, Handler>) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = input instanceof Request ? input : new Request(String(input), init);
     const url = new URL(req.url);
-    const text = req.method === "GET" ? "" : await req.text();
+    const isJson = (req.headers.get("content-type") ?? "").includes("application/json");
+    const text = req.method === "GET" || !isJson ? "" : await req.text();
     const body = text ? JSON.parse(text) : undefined;
     calls.push({ method: req.method, path: url.pathname, body });
     const key = `${req.method} ${url.pathname}`;
@@ -61,6 +62,7 @@ export function project(overrides: Partial<Project> = {}): Project {
     title: "The Quiet Engine",
     subtitle: null,
     author_name: null,
+    description: null,
     project_type: "technical",
     language: "en",
     audience: null,

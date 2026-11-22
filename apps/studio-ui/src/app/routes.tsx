@@ -4,6 +4,7 @@ import { NotAvailable, PageHeader } from "../components/Misc";
 import { ActivityPage } from "../features/activity/ActivityPage";
 import { ChapterEditorPage } from "../features/editor/ChapterEditorPage";
 import { HelpPage } from "../features/help/HelpPage";
+import { ImportPage } from "../features/import/ImportPage";
 import { LibraryPage } from "../features/library/LibraryPage";
 import { ManuscriptsPage } from "../features/manuscripts/ManuscriptsPage";
 import { NewBookPage } from "../features/project/NewBookPage";
@@ -28,6 +29,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <LibraryPage /> },
       { path: "new", element: <NewBookPage /> },
+      { path: "import", element: <ImportPage /> },
       { path: "manuscripts", element: <ManuscriptsPage /> },
       { path: "projects/:projectId", element: <ProjectPage /> },
       { path: "projects/:projectId/chapters/:chapterId", element: <ChapterEditorPage /> },
