@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from typing import Any
 
 from sqlalchemy import Select, and_, case, func, or_, select
@@ -10,11 +11,11 @@ from sqlalchemy.orm import Session
 
 from pbs_core.context import AppContext
 from pbs_core.contracts import ProjectCreate, ProjectList, ProjectOut, ProjectPatch
-from pbs_core.document import bookmd_v0
+from pbs_core.document import bookmd
 from pbs_core.domain.errors import ArchivedError, NotFoundError
 from pbs_core.domain.ids import is_ulid
 from pbs_core.services import activity
-from pbs_core.storage.models import Chapter, ChapterRevision, Project
+from pbs_core.storage.models import Asset, Chapter, ChapterRevision, Project
 
 
 def _stats_subquery() -> Any:
@@ -44,6 +45,7 @@ def _to_out(p: Project, chapters: int | None, words: int | None) -> ProjectOut:
         title=p.title,
         subtitle=p.subtitle,
         author_name=p.author_name,
+        description=p.description,
         project_type=p.project_type,
         language=p.language,
         audience=p.audience,
@@ -156,12 +158,20 @@ def get_project(ctx: AppContext, project_id: str) -> ProjectOut:
 
 
 def create_project(ctx: AppContext, data: ProjectCreate, *, is_demo: bool = False) -> ProjectOut:
+    with ctx.db.tx() as s:
+        project = insert_project(s, ctx, data, is_demo=is_demo)
+        return _load_out(s, project.id)
+
+
+def insert_project(s: Session, ctx: AppContext, data: ProjectCreate, *, is_demo: bool = False) -> Project:
+    """Create a project inside the caller's transaction (also used by imports and restores)."""
     now = ctx.clock.iso()
     project = Project(
         id=ctx.ids.new(),
         title=data.title,
         subtitle=data.subtitle or None,
         author_name=data.author_name or None,
+        description=data.description or None,
         project_type=data.project_type,
         language=data.language,
         audience=data.audience or None,
@@ -172,21 +182,19 @@ def create_project(ctx: AppContext, data: ProjectCreate, *, is_demo: bool = Fals
         created_at=now,
         updated_at=now,
     )
-    with ctx.db.tx() as s:
-        s.add(project)
-        s.flush()
-        activity.record(
-            s,
-            ctx,
-            kind="project_created",
-            summary=f"Created “{project.title}”",
-            project_id=project.id,
-            ref_type="project",
-            ref_id=project.id,
-        )
-        out = _load_out(s, project.id)
+    s.add(project)
+    s.flush()
+    activity.record(
+        s,
+        ctx,
+        kind="project_created",
+        summary=f"Created “{project.title}”",
+        project_id=project.id,
+        ref_type="project",
+        ref_id=project.id,
+    )
     ctx.workspace.project_dir(project.id).mkdir(parents=True, exist_ok=True)
-    return out
+    return project
 
 
 def update_project(ctx: AppContext, project_id: str, patch: ProjectPatch) -> ProjectOut:
@@ -262,6 +270,7 @@ def duplicate_project(ctx: AppContext, project_id: str) -> ProjectOut:
             title=f"{src.title} (copy)"[:300],
             subtitle=src.subtitle,
             author_name=src.author_name,
+            description=src.description,
             project_type=src.project_type,
             language=src.language,
             audience=src.audience,
@@ -280,10 +289,14 @@ def duplicate_project(ctx: AppContext, project_id: str) -> ProjectOut:
             .where(Chapter.project_id == src.id, Chapter.archived_at.is_(None))
             .order_by(Chapter.position)
         ).all()
-        for ch in chapters:
+        id_map: dict[str, str] = {ch.id: ctx.ids.new() for ch in chapters}
+        # Parents first so composite parent FKs resolve.
+        ordered = sorted(chapters, key=lambda c: (_depth(c, {x.id: x for x in chapters}), c.position))
+        for ch in ordered:
             new_ch = Chapter(
-                id=ctx.ids.new(),
+                id=id_map[ch.id],
                 project_id=dup.id,
+                parent_id=id_map.get(ch.parent_id) if ch.parent_id else None,
                 kind=ch.kind,
                 position=ch.position,
                 title=ch.title,
@@ -300,7 +313,7 @@ def duplicate_project(ctx: AppContext, project_id: str) -> ProjectOut:
             head = s.get(ChapterRevision, ch.head_revision_id) if ch.head_revision_id else None
             if head is None:
                 continue
-            bdm, words = bookmd_v0.parse(head.source_md, chapter_id=new_ch.id, new_id=ctx.ids.new)
+            parsed = bookmd.parse(head.source_md, chapter_id=new_ch.id, new_id=ctx.ids.new)
             rev = ChapterRevision(
                 id=ctx.ids.new(),
                 project_id=dup.id,
@@ -308,16 +321,38 @@ def duplicate_project(ctx: AppContext, project_id: str) -> ProjectOut:
                 revision_no=1,
                 origin="imported",
                 source_md=head.source_md,
-                bdm_json=json.dumps(bdm, ensure_ascii=False),
-                parser_version=bookmd_v0.PARSER_VERSION,
+                bdm_json=json.dumps(parsed.doc, ensure_ascii=False),
+                parser_version=bookmd.PARSER_VERSION,
                 content_hash=head.content_hash,
-                word_count=words,
+                word_count=parsed.word_count,
                 note=f"Duplicated from project {src.id}, revision {head.id}",
                 created_at=now,
             )
             s.add(rev)
             s.flush()
             new_ch.head_revision_id, new_ch.head_revision_no = rev.id, 1
+        # Images travel with the text: references are content hashes, so copied text still resolves.
+        for asset in s.scalars(select(Asset).where(Asset.project_id == src.id)).all():
+            src_file = ctx.workspace.project_dir(src.id) / asset.storage_path
+            dst_file = ctx.workspace.project_dir(dup.id) / asset.storage_path
+            if src_file.is_file():
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src_file, dst_file)
+            s.add(
+                Asset(
+                    id=ctx.ids.new(),
+                    project_id=dup.id,
+                    sha256=asset.sha256,
+                    short_hash=asset.short_hash,
+                    mime=asset.mime,
+                    byte_size=asset.byte_size,
+                    width_px=asset.width_px,
+                    height_px=asset.height_px,
+                    original_name=asset.original_name,
+                    storage_path=asset.storage_path,
+                    created_at=now,
+                )
+            )
         activity.record(
             s,
             ctx,
@@ -331,3 +366,11 @@ def duplicate_project(ctx: AppContext, project_id: str) -> ProjectOut:
         out = _load_out(s, dup.id)
     ctx.workspace.project_dir(out.id).mkdir(parents=True, exist_ok=True)
     return out
+
+
+def _depth(ch: Chapter, by_id: dict[str, Chapter]) -> int:
+    depth, cur = 0, ch
+    while cur.parent_id and cur.parent_id in by_id and depth < 10:
+        depth += 1
+        cur = by_id[cur.parent_id]
+    return depth
