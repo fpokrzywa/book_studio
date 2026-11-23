@@ -52,6 +52,8 @@ class AiStatusOut(BaseModel):
     running_jobs: int
     pending_proposals: int
     secret_store: SecretStoreOut
+    cloud_allowed_by_operator: bool = Field(True, description="False when the server sets PBS_ALLOW_CLOUD=false")
+    private_model_hosts: list[str] = Field(default_factory=list, description="Hosts the operator treats as local")
 
 
 class PrivacyIn(_Model):

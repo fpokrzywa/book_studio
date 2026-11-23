@@ -34,7 +34,12 @@ export function AiSettingsPage() {
         title="AI settings"
         intro="Choose which AI models Personal Book Studio may use, and whether anything may leave this computer."
       />
-      <PrivacySection mode={status.data.privacy_mode} external={status.data.external_requests} />
+      <PrivacySection
+        mode={status.data.privacy_mode}
+        external={status.data.external_requests}
+        operatorAllowsCloud={status.data.cloud_allowed_by_operator ?? true}
+        privateHosts={status.data.private_model_hosts ?? []}
+      />
       {status.data.secret_store.warning ? (
         <div className="banner" role="note">
           <span>
@@ -50,7 +55,17 @@ export function AiSettingsPage() {
   );
 }
 
-function PrivacySection({ mode, external }: { mode: string; external: Record<string, number> }) {
+function PrivacySection({
+  mode,
+  external,
+  operatorAllowsCloud,
+  privateHosts,
+}: {
+  mode: string;
+  external: Record<string, number>;
+  operatorAllowsCloud: boolean;
+  privateHosts: string[];
+}) {
   const id = useId();
   const announce = useAnnounce();
   const setPrivacy = useSetPrivacy();
@@ -80,11 +95,25 @@ function PrivacySection({ mode, external }: { mode: string; external: Record<str
             type="radio"
             name={`${id}-mode`}
             checked={mode === "cloud_allowed"}
+            disabled={!operatorAllowsCloud}
+            aria-describedby={operatorAllowsCloud ? undefined : `${id}-op`}
             onChange={() => setConfirm(true)}
           />
           Cloud allowed, for books you approve
         </label>
       </fieldset>
+      {operatorAllowsCloud ? null : (
+        <p className="hint" id={`${id}-op`}>
+          <strong>Cloud AI is turned off on this server</strong> (PBS_ALLOW_CLOUD=false), so only local models
+          and private model hosts can be used, whatever is chosen here.
+        </p>
+      )}
+      {privateHosts.length ? (
+        <p className="hint">
+          Private model hosts that count as local on this server: {privateHosts.join(", ")}. Ollama can run on
+          any of them (for example http://{privateHosts[0]}:11434).
+        </p>
+      ) : null}
       <p className="hint">
         {mode === "local_only"
           ? "Cloud providers are blocked before any connection is made. Local models (Ollama) still work."
@@ -287,8 +316,12 @@ function ProviderCard({ provider: p, keyStore }: { provider: Provider; keyStore:
             />
             <p className="hint">
               Kept in{" "}
-              {keyStore === "keyring" ? "your system's credential store" : `the “${keyStore}” key store`},
-              never in the book database, backups or exports.
+              {keyStore === "keyring"
+                ? "your system's credential store"
+                : keyStore === "encrypted-file"
+                  ? "the server's encrypted key store"
+                  : `the “${keyStore}” key store`}
+              , never in the book database, backups or exports.
             </p>
           </div>
           <div className="page-actions">

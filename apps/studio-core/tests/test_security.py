@@ -1,5 +1,6 @@
-"""Local API guard (T-S1, T-S2), redaction (T-S5) and loopback-only configuration."""
+"""Request guard (T-S1, T-S2), redaction (T-S5) and loopback-only local configuration."""
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -15,54 +16,58 @@ from tests.conftest import BASE_URL, UI_ORIGIN, make_settings
 
 
 @pytest.fixture
-def raw_client(workspace: Path, ctx: AppContext) -> TestClient:
-    """Client WITHOUT the session token header."""
-    return TestClient(create_app(make_settings(workspace), ctx=ctx), base_url=BASE_URL)
+def raw_client(workspace: Path, ctx: AppContext) -> Iterator[TestClient]:
+    """Client that has not signed in."""
+    with TestClient(create_app(make_settings(workspace), ctx=ctx), base_url=BASE_URL) as c:
+        yield c
 
 
-def test_missing_token_is_rejected(raw_client: TestClient) -> None:
+def test_missing_session_is_rejected(raw_client: TestClient) -> None:
     resp = raw_client.get("/api/projects")
     assert resp.status_code == 401
     assert resp.headers["content-type"].startswith("application/problem+json")
-    assert resp.json()["code"] == "missing_or_bad_token"
+    assert resp.json()["code"] == "not_signed_in"
 
 
-def test_wrong_token_is_rejected(raw_client: TestClient) -> None:
-    assert raw_client.get("/api/projects", headers={"X-PBS-Token": "nope"}).status_code == 401
+def test_forged_session_cookie_is_rejected(raw_client: TestClient) -> None:
+    raw_client.cookies.set("pbs_session", "nope")
+    assert raw_client.get("/api/projects").status_code == 401
 
 
-def test_healthz_needs_no_token(raw_client: TestClient) -> None:
+def test_old_launch_token_header_no_longer_grants_access(raw_client: TestClient) -> None:
+    assert raw_client.get("/api/projects", headers={"X-PBS-Token": "anything"}).status_code == 401
+
+
+def test_healthz_needs_no_session(raw_client: TestClient) -> None:
     assert raw_client.get("/healthz").json() == {"status": "ok"}
 
 
-def test_bad_host_is_rejected(raw_client: TestClient, ctx: AppContext) -> None:
-    resp = raw_client.get("/api/projects", headers={"X-PBS-Token": ctx.token, "Host": "evil.example"})
+def test_bad_host_is_rejected(client: TestClient) -> None:
+    resp = client.get("/api/projects", headers={"Host": "evil.example"})
     assert resp.status_code == 400
     assert resp.json()["code"] == "bad_host"
 
 
-def test_rebinding_host_with_right_port_is_rejected(raw_client: TestClient, ctx: AppContext) -> None:
+def test_rebinding_host_with_right_port_is_rejected(raw_client: TestClient) -> None:
     resp = raw_client.get("/healthz", headers={"Host": "attacker.example:8765"})
     assert resp.status_code == 400
 
 
-def test_foreign_origin_is_rejected_even_with_token(raw_client: TestClient, ctx: AppContext) -> None:
-    resp = raw_client.post(
-        "/api/projects",
-        json={"title": "x", "project_type": "fiction"},
-        headers={"X-PBS-Token": ctx.token, "Origin": "https://evil.example"},
+def test_foreign_origin_is_rejected_even_when_signed_in(client: TestClient) -> None:
+    resp = client.post(
+        "/api/projects", json={"title": "x", "project_type": "fiction"}, headers={"Origin": "https://evil.example"}
     )
     assert resp.status_code == 403
     assert resp.json()["code"] == "bad_origin"
 
 
-def test_cross_site_fetch_metadata_is_rejected(raw_client: TestClient, ctx: AppContext) -> None:
-    resp = raw_client.get("/api/projects", headers={"X-PBS-Token": ctx.token, "Sec-Fetch-Site": "cross-site"})
+def test_cross_site_fetch_metadata_is_rejected(client: TestClient) -> None:
+    resp = client.get("/api/projects", headers={"Sec-Fetch-Site": "cross-site"})
     assert resp.status_code == 403
 
 
-def test_allowed_origin_works_and_no_cors_headers(raw_client: TestClient, ctx: AppContext) -> None:
-    resp = raw_client.get("/api/projects", headers={"X-PBS-Token": ctx.token, "Origin": UI_ORIGIN})
+def test_allowed_origin_works_and_no_cors_headers(client: TestClient) -> None:
+    resp = client.get("/api/projects", headers={"Origin": UI_ORIGIN})
     assert resp.status_code == 200
     assert not any(h.lower().startswith("access-control-") for h in resp.headers)
 
@@ -77,14 +82,13 @@ def test_preflight_gets_no_cors_approval(raw_client: TestClient) -> None:
 
 
 @pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.10", "example.com", "::"])  # noqa: S104
-def test_non_loopback_host_setting_is_refused(tmp_path: Path, host: str) -> None:
+def test_local_deployment_refuses_non_loopback_host(tmp_path: Path, host: str) -> None:
     with pytest.raises(ValidationError):
         Settings(workspace=tmp_path, host=host)
 
 
-def test_token_file_written(ctx: AppContext) -> None:
-    assert ctx.workspace.token_path.read_text(encoding="ascii") == ctx.token
-    assert len(ctx.token) >= 43
+def test_no_launch_token_file_is_written(ctx: AppContext) -> None:
+    assert not ctx.workspace.legacy_token_path.exists()
 
 
 def test_redact_text_patterns() -> None:

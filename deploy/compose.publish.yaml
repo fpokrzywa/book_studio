@@ -1,0 +1,8 @@
+# Only when Nginx Proxy Manager runs on ANOTHER machine: publish Core's HTTP port on one address of
+# this server (never 0.0.0.0 unless a firewall limits it to the NPM machine). Set PBS_PUBLISH_HTTP in
+# deploy/.env, e.g. 192.168.1.20:8765, and PBS_TRUSTED_PROXIES to the NPM machine's address.
+# The scripts add this file automatically when PBS_PUBLISH_HTTP is set.
+services:
+  app:
+    ports:
+      - "${PBS_PUBLISH_HTTP:?set PBS_PUBLISH_HTTP}:8765"

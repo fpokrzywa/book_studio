@@ -109,14 +109,35 @@ def healthz() -> dict[str, str]:
 
 @api.get("/system/info", tags=["system"])
 def system_info(ctx: Ctx) -> SystemInfoOut:
-    mode = ctx.setting("privacy_mode")
+    mode = ctx.setting("privacy_mode") if ctx.settings.allow_cloud else "local_only"  # operator switch wins
+    running, seen = _worker_state(ctx)
     return SystemInfoOut(
         app_version=__version__,
         schema_revision=ctx.schema_revision,
         workspace_path=str(ctx.workspace.root),
         privacy_mode="cloud_allowed" if mode == "cloud_allowed" else "local_only",
         env=ctx.settings.env,
+        deployment=ctx.settings.deployment,
+        worker_running=running,
+        worker_last_seen_at=seen,
     )
+
+
+def _worker_state(ctx: AppContext) -> tuple[bool, str | None]:
+    """In-process runner, or a separate worker whose heartbeat file is under a minute old."""
+    import time
+
+    from pbs_core.jobs.runner import HEARTBEAT_FILE
+
+    if ctx.jobs is not None:
+        return True, ctx.clock.iso()
+    path = ctx.workspace.runtime_dir / HEARTBEAT_FILE
+    try:
+        age = time.time() - path.stat().st_mtime
+        seen = path.read_text(encoding="ascii").strip() or None
+    except OSError:
+        return False, None
+    return age < 60, seen
 
 
 @api.get("/system/capabilities", tags=["system"])

@@ -121,7 +121,8 @@ class Workspace:
         return self.root / "runtime"
 
     @property
-    def token_path(self) -> Path:
+    def legacy_token_path(self) -> Path:
+        """Phase 00-08 wrote a per-launch token here for the Vite proxy; removed in Phase 09."""
         return self.runtime_dir / "session.token"
 
     @property

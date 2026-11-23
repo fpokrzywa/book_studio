@@ -117,6 +117,11 @@ def secret_store_out(ctx: AppContext) -> SecretStoreOut:
         warning = "Keys are kept in a development file protected only by file permissions. Use the OS credential store for real work."
     elif store.name == "memory":
         warning = "Keys are kept in memory only (test mode) and are lost when Core stops."
+    elif not store.writable and ctx.settings.deployment == "server":
+        warning = (
+            "No encrypted key store is set up on this server, so keys can only come from PBS_<PROVIDER>_API_KEY "
+            "environment variables. Set PBS_SECRET_KEY_FILE to store keys here (see docs/DEPLOYMENT.md)."
+        )
     elif not store.writable:
         warning = (
             "No OS credential store was found. Keys can only come from PBS_<PROVIDER>_API_KEY environment variables."
@@ -136,10 +141,18 @@ def status(ctx: AppContext) -> AiStatusOut:
         running_jobs=int(counts.get("running", 0)),
         pending_proposals=int(pending),
         secret_store=secret_store_out(ctx),
+        cloud_allowed_by_operator=ctx.settings.allow_cloud,
+        private_model_hosts=sorted(ctx.settings.local_ai_hosts),
     )
 
 
 def set_privacy(ctx: AppContext, data: PrivacyIn) -> AiStatusOut:
+    if data.mode == "cloud_allowed" and not ctx.settings.allow_cloud:
+        raise ConflictError(
+            "Cloud AI is turned off on this server.",
+            detail="Whoever runs the server set PBS_ALLOW_CLOUD=false. Only local and private model hosts can be used.",
+            extra={"reason": "cloud_disabled_by_operator"},
+        )
     if data.mode == "cloud_allowed" and not data.confirm:
         raise ValidationFailedError("Confirm that you want to allow cloud AI providers.")
     with ctx.db.tx() as s:
@@ -240,8 +253,9 @@ def _check_ollama_url(url: str) -> str:
         return normalize_loopback_url(url)
     except ValueError as exc:
         raise ValidationFailedError(
-            "Ollama must run on this computer, at an address such as http://127.0.0.1:11434. "
-            "Remote servers are not allowed."
+            "Ollama must run on the same machine as the studio (for example http://127.0.0.1:11434) or on a "
+            "private model host the server's operator named in PBS_LOCAL_AI_HOSTS (for example http://ollama:11434). "
+            "Other servers are not allowed."
         ) from exc
 
 

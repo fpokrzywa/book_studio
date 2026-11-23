@@ -23,6 +23,7 @@ import { ProjectPage } from "../features/project/ProjectPage";
 import { NarrationPage, RecordingsPage } from "../features/advanced/MediaPages";
 import { TranslationsPage } from "../features/advanced/TranslationsPage";
 import { SeriesHome, SeriesPage } from "../features/series/SeriesPages";
+import { AccountPage } from "../features/auth/AccountPage";
 import { AppShell } from "./AppShell";
 
 function NotFound() {
@@ -66,6 +67,7 @@ export const routes: RouteObject[] = [
       { path: "projects/:projectId/recordings", element: <RecordingsPage /> },
       { path: "ai-settings", element: <AiSettingsPage /> },
       { path: "jobs", element: <JobsPage /> },
+      { path: "account", element: <AccountPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },

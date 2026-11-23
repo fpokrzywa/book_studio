@@ -1,7 +1,10 @@
 """The egress gate: the only way any code in Personal Book Studio reaches the network.
 
 Rules (docs/SECURITY.md section 4):
-1. Loopback addresses (127.0.0.0/8, ::1, localhost) are always allowed: local models.
+1. Loopback addresses (127.0.0.0/8, ::1, localhost) are always allowed: local models. So are the
+   private model hosts the server operator names in PBS_LOCAL_AI_HOSTS (e.g. the "ollama"
+   container on the studio's internal Docker network). Only the operator can set these, through
+   the environment; nothing in the browser can add one.
 2. Anything else needs privacy mode "cloud_allowed" AND, for the project being worked on,
    the author's consent for that provider AND a host on that provider's allowlist.
 3. Violations raise EgressBlocked BEFORE a connection is opened. Nothing falls back.
@@ -37,6 +40,20 @@ class EgressBlockedError(RuntimeError):
     """Raised instead of opening a connection the privacy rules do not allow."""
 
 
+_local_hosts: frozenset[str] = frozenset()
+
+
+def configure_local_hosts(hosts: list[str]) -> None:
+    """Set the operator-named private model hosts (from PBS_LOCAL_AI_HOSTS at startup)."""
+    global _local_hosts
+    _local_hosts = frozenset(h.strip().lower() for h in hosts if h.strip())
+
+
+def is_local_host(host: str) -> bool:
+    """Loopback, or a private model host the operator configured: never counted as the internet."""
+    return is_loopback_host(host) or host.strip("[]").lower() in _local_hosts
+
+
 def is_loopback_host(host: str) -> bool:
     host = host.strip("[]").lower()
     if host == "localhost" or host.endswith(".localhost"):
@@ -62,7 +79,7 @@ def check(url: httpx2.URL | str, permit: EgressPermit, *, record: bool = False) 
     if parsed.scheme not in ("http", "https"):
         raise EgressBlockedError(f"Only http(s) addresses are allowed (got {parsed.scheme}).")
     host = parsed.host or ""
-    if is_loopback_host(host):
+    if is_local_host(host):
         return
     if not permit.cloud_allowed:
         raise EgressBlockedError(
@@ -86,8 +103,8 @@ def normalize_loopback_url(url: str) -> str:
         raise ValueError("not a URL") from exc
     if parsed.scheme not in ("http", "https") or not parsed.host:
         raise ValueError("not an http(s) URL")
-    if not is_loopback_host(parsed.host):
-        raise ValueError("not on this computer")
+    if not is_local_host(parsed.host):
+        raise ValueError("not on this computer or a configured private model host")
     return str(parsed).rstrip("/")
 
 
@@ -95,7 +112,7 @@ def provider_is_local(kind: str, base_url: str) -> bool:
     if kind == "mock":
         return True
     try:
-        return is_loopback_host(httpx2.URL(base_url).host or "")
+        return is_local_host(httpx2.URL(base_url).host or "")
     except Exception:
         return False
 

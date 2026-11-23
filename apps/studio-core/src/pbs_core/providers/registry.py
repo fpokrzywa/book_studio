@@ -46,6 +46,9 @@ def is_local(provider: ProviderConfig) -> bool:
 
 
 def privacy_mode(ctx: AppContext) -> str:
+    """The effective mode. PBS_ALLOW_CLOUD=false (the server operator's switch) always means local-only."""
+    if not ctx.settings.allow_cloud:
+        return "local_only"
     return str(ctx.setting("privacy_mode") or "local_only")
 
 
@@ -58,7 +61,16 @@ def permit_for(ctx: AppContext, provider: ProviderConfig, *, project_id: str | N
     """Cloud access needs privacy mode `cloud_allowed` and, for project work, that project's consent."""
     if is_local(provider):
         return EgressPermit(
-            provider.kind, cloud_allowed=False, reason_if_blocked="Local providers may only use this computer."
+            provider.kind,
+            cloud_allowed=False,
+            reason_if_blocked="Local providers may only use this machine or an operator-named private model host.",
+        )
+    if not ctx.settings.allow_cloud:
+        return EgressPermit(
+            provider.kind,
+            cloud_allowed=False,
+            reason_if_blocked=f"Cloud AI is turned off on this server (PBS_ALLOW_CLOUD=false), so {provider.label} "
+            "cannot be contacted. Nothing was sent.",
         )
     if privacy_mode(ctx) != "cloud_allowed":
         return EgressPermit(

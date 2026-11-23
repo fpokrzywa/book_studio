@@ -1,6 +1,6 @@
 /** Phase 08 API: series canon and continuity, pen names, translated editions, narration, recordings. */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, call, upload, type Schemas } from "./client";
+import { api, call, runTask, upload, type Schemas } from "./client";
 
 export type Series = Schemas["SeriesOut"];
 export type Canon = Schemas["CanonOut"];
@@ -381,7 +381,10 @@ export function useNarrationActions(pid: string) {
       onSuccess: inv,
     }),
     exportAudio: useMutation({
-      mutationFn: () => call(api.POST("/api/projects/{project_id}/narration/export", pp(pid))),
+      mutationFn: () =>
+        runTask<Schemas["AudioExportOut"]>(
+          call(api.POST("/api/projects/{project_id}/narration/export-task", pp(pid))),
+        ),
       onSuccess: inv,
     }),
   };

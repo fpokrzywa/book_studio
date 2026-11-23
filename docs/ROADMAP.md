@@ -26,8 +26,8 @@ A phase is **done** only when all of these hold:
 | 06 | Sectioned generation, editor AI actions, quality and continuity reviews, originality report | **Writing/research beta** |
 | 07 | Book design, front/back matter, all exports, covers, preflight, KDP package | **Publishing beta** |
 | 08 | Series bible, pen names, translation, narration, transcription | **Feature-complete** |
-| 09 | Security/perf/a11y hardening, feature matrix, regression | |
-| 10 | Tauri 2 desktop packaging, first-run wizard, installers | **Stable desktop** |
+| 09 | Production hardening and web architecture: sign-in, request guard, server key store, background worker, Docker Compose on Ubuntu (redefined 2026-11-23, ADR-0010) | **Self-hosted web beta** |
+| 10 | Ubuntu production deployment behind Nginx Proxy Manager, persistent storage, AI integrations, operations scripts, end-to-end validation (defined 2026-11-23, ADR-0011). The Tauri desktop plan is **retired** (ADR-0010) | **Self-hosted production** |
 
 ## Phase gates (acceptance criteria)
 
@@ -92,12 +92,27 @@ A phase is **done** only when all of these hold:
 - G8.2 A chapter translation becomes a linked edition. Source revisions are untouched.
 - G8.3 Narration and transcription degrade gracefully without providers, and make zero cloud calls in local-only mode.
 
-### Phase 09: Hardening
+### Phase 09: Production hardening and web architecture (as redefined on 2026-11-23)
+- G9.W1 The studio runs in a standard browser with no desktop runtime.
+- G9.W2 Features of Phases 01 to 08 keep working (full regression green).
+- G9.W3 Authentication, authorization on every endpoint, CSRF, headers and file-security tests pass.
+- G9.W4 Existing books and revisions survive the upgrade intact.
+- G9.W5 Structurally ready for Ubuntu Docker Compose deployment.
+
+The original Phase 09 gates below were written for the desktop plan. G9.1 and G9.2 were **not** part of
+the redefined phase and remain open; see BUILD_STATE.
+
 - G9.1 `FEATURE_MATRIX.md` (working/partial/absent/blocked, linked to code and tests), `SECURITY_AUDIT.md`, `KNOWN_LIMITATIONS.md`, `RELEASE_CHECKLIST.md`.
 - G9.2 Performance measured on the 100-chapter fixture. Real numbers recorded.
 - G9.3 All high-severity defects fixed. Full regression green, with the output captured.
 
-### Phase 10: Desktop
+### Phase 10: Ubuntu server deployment and operations (as defined on 2026-11-23)
+- G10.W1 The studio is reached in a browser through Nginx Proxy Manager over HTTPS.
+- G10.W2 The original book workflows run end to end on the deployment (import, AI edit, approval, revision, exports).
+- G10.W3 User data survives restarts, container recreation, updates and restores.
+- G10.W4 Install, update, backup, restore and rollback are scripted, non-destructive and tested on Ubuntu.
+
+### Old Phase 10: Desktop (retired by ADR-0010; kept for the record)
 - G10.1 Tauri 2 app on Windows (x64) launches the sidecar, single instance, loopback only, token handoff.
 - G10.2 First-run wizard + dependency status without a terminal.
 - G10.3 Installer artifacts only for targets actually built. CI workflows for the others, with unsigned limitations documented.

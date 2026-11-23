@@ -31,8 +31,9 @@ from pbs_core.contracts_advanced import (
     TranslateIn,
 )
 from pbs_core.contracts_ai import JobOut
+from pbs_core.contracts_auth import TaskOut
 from pbs_core.contracts_knowledge import AuthorProfileOut
-from pbs_core.services import media, series, translation, voice
+from pbs_core.services import media, series, tasks, translation, voice
 
 router = APIRouter(prefix="/api", responses=ERRORS)
 
@@ -149,6 +150,11 @@ def synthesize(
 @router.get("/projects/{project_id}/narration/parts/{chunk_id}/audio", tags=["media"], response_class=FileResponse)
 def chunk_audio(ctx: Ctx, project_id: str, chunk_id: str) -> FileResponse:
     return _audio(media.chunk_audio(ctx, project_id, chunk_id), f"{chunk_id}.wav", "audio/wav")
+
+
+@router.post("/projects/{project_id}/narration/export-task", tags=["media"], status_code=status.HTTP_202_ACCEPTED)
+def export_narration_task(ctx: Ctx, project_id: str) -> TaskOut:
+    return tasks.enqueue(ctx, "narration.export", project_id)
 
 
 @router.post("/projects/{project_id}/narration/export", tags=["media"], status_code=status.HTTP_201_CREATED)

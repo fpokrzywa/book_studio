@@ -6,14 +6,406 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **08: Advanced features (series canon and continuity, pen names, translated editions, optional narration, recorded interviews): COMPLETE (pending user review)** |
-| Next phase | 09 |
-| Branch | `phase/08-advanced`, stacked on `phase/07-publishing` (PR #7), then Phases 06 to 01 (PRs #6 to #1). Nothing merged yet. Phase 08 is not committed yet |
-| Schema | Alembic head `0009` (`0009_advanced`). The dev workspace migrates 0008 → 0009 automatically, with a snapshot |
+| Current phase | **11: Final acceptance testing and stabilisation: COMPLETE (pending user review). Verdict: READY FOR PERSONAL USE, with conditions (docs/FINAL_ACCEPTANCE_REPORT.md)** |
+| Previous phases | 10 (Ubuntu deployment and operations), 09 (web architecture) and 08 (advanced features): complete, pending user review; their decisions (P8-1 to P8-12, P9-1 to P9-13, P10-1 to P10-10) are not signed off yet |
+| Next phase | Not defined. Do not start one automatically |
+| Branch | Working tree on `phase/08-advanced`, stacked on `phase/07-publishing` (PR #7), then Phases 06 to 01. **Phases 08, 09, 10 and 11 are not committed.** A snapshot of the Phase 08 tree alone was saved as git tree object `85170bfbbcc381a4ef2a8156741d73cf11e43d25`, so the two phases can still be committed separately |
+| Schema | Alembic head `0010` (`0010_web`, adds tables only). Workspaces migrate automatically, with a snapshot |
+| Deployment | `local` (development, loopback only) or `server` (Docker Compose behind Caddy; `docs/DEPLOYMENT.md`) |
 | KDP rule set | `kdp-paperback-2026-11-22` (unchanged) |
-| OpenAI audio facts | read 2026-11-23 (ADR-0009) |
-| Platforms verified | Windows 11 x64 only. macOS is **not executed** |
-| Last updated | 2026-11-23 |
+| OpenAI audio facts | read 2026-11-23 (ADR-0009); OWASP scrypt parameters read 2026-11-23 (ADR-0010) |
+| Platforms verified | Windows 11 x64; the Linux image under Docker Desktop's Linux engine. A real Ubuntu host and macOS are **not executed** |
+| Last updated | 2026-11-23 (Phase 11) |
+
+## Phase 11 evidence (real results, 2026-11-23): final acceptance and stabilisation
+
+**Verdict: READY FOR PERSONAL USE, with conditions**: run EPUBCheck before submitting an EPUB to a store;
+run DEPLOYMENT_VERIFICATION §3 once on a real Ubuntu server; commit the work. Full report:
+`docs/FINAL_ACCEPTANCE_REPORT.md`.
+
+Final check: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format | All checks passed / 194 files already formatted |
+| mypy `--strict` (153 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken |
+| pytest (Core) | **308 passed, 1 skipped** (the skip is the live Ollama test) |
+| License gate | passed: 101 runtime dependencies |
+| ESLint + Prettier, TypeScript strict, Vite build | clean, built |
+| Vitest + axe | **51 passed** |
+| Playwright + axe | **19 passed** |
+| Note | The run before this one stopped with one setup error, Windows `WinError 10055` (no socket buffer space), late in pytest. Measured: the test process keeps about 2 open sockets throughout (no leak), so this is the machine running short under load. It happened in 2 of the last 7 full runs. Recorded in KNOWN_ISSUES |
+
+| Area | Evidence |
+|---|---|
+| Audit | `docs/FEATURE_MATRIX.md`: 100 rows (70 PASS, 26 PARTIAL, 3 BLOCKED, 1 NOT IMPLEMENTED), each tied to tests; UI presence never counted |
+| Publishing simulation | `tests/test_final_acceptance.py`: Markdown manuscript imported (original SHA-256 identical); AI suggestion rejected (text byte-identical) and approved (one revision, double accept refused, code and math untouched); DOCX, EPUB and PDF inspected per format (chapters, matter, images, references, tables, code verbatim, math, no duplicates, approved edit present). Results per format in FINAL_ACCEPTANCE_REPORT |
+| Ubuntu deployment | DEPLOYMENT_VERIFICATION §2: compose valid; restart policy after a stop and start; migrations; exposure (only NPM listens; Core and Ollama unreachable from the host; backend network internal); logs (0 tracebacks, 0 secrets); end-to-end with `qwen2.5:0.5b` (all PASS, including originals byte for byte); worker killed mid-job → attempt 2 succeeded, 1 suggestion, chapter unchanged; **backup restored into an isolated Compose project with identical fingerprints** (18 revisions, 4 assets, 4 originals); three updates and a rollback |
+| Performance (NFR-4, first measurement) | 100 chapters, 500 images, 10,000 chunks: library 85 ms, chapter tree 46 ms, full-text search 41 ms (median of repeated calls), EPUB export 2.7 s (193 KB). API timings on the Windows dev machine; editor keystroke latency not measured |
+| Not verified | EPUBCheck (download refused by the session's permission settings), a physical Ubuntu server, Let's Encrypt, cloud providers with real keys, real speech engines, macOS (KNOWN_ISSUES 1 to 6) |
+
+## Phase 11: what changed
+
+No features were added and the architecture is unchanged.
+
+- **Fixes:**
+  - `backup.sh --path-file`, with `update.sh` and `run_e2e.sh` no longer using `tee /dev/stderr`;
+  - `restore.sh` restores into an empty folder (new server);
+  - `PBS_PROJECT_NAME` for isolated copies;
+  - `run_e2e.sh` checks originals byte for byte and warns not to use the studio while it runs;
+  - e2e helpers `openAiPanel` and `addMockProvider` remove two test races.
+- **Tests:** `test_final_acceptance.py`.
+- **Documents:** `FINAL_ACCEPTANCE_REPORT.md`, `FEATURE_MATRIX.md`, `DEPLOYMENT_VERIFICATION.md`,
+  `KNOWN_ISSUES.md` and `USER_GUIDE.md`; README links them; this file now has the Phase 10 evidence
+  that DEPLOYMENT.md cited.
+
+## Phase 11: bugs found and fixed
+
+- **Log truncation (operations, high):** when `update.sh` or `run_e2e.sh` output was redirected to a file
+  (cron), `tee /dev/stderr` reopened that file with truncation, wiping earlier lines and leaving NUL
+  bytes. It was found because the harness log came back with NULs. Re-tested on Ubuntu: an appended
+  `update.sh` log keeps its first line, with 0 NUL bytes.
+- **Flaky browser tests (medium):** one or two different specs failed in each full run.
+  - Cause 1: tests checked the AI panel before the editor rendered, then clicked the toggle, closing a
+    panel stored as open.
+  - Cause 2: tests navigated away before "Add provider" was saved, so no model existed.
+  - Both were test races, not app defects. The fix is shared helpers that wait for the real state;
+    repeated runs pass.
+- **Restore onto a new server (low):** `restore.sh` assumed an existing data folder. Fixed and used for
+  the isolated restore.
+- **Test-bed only (not shipped):** Docker's overlay storage inside the test container; a stale `dockerd`
+  PID file after the box stopped; `/etc/hosts` rewritten on restart; `ss` missing in the minimal image.
+
+## Remaining issues
+
+See `docs/KNOWN_ISSUES.md`: 6 unverified items, 7 medium, 7 low; none critical.
+
+## Next
+
+No further phase is defined. FINAL_ACCEPTANCE_REPORT "Recommended next improvements" lists the
+candidates. EPUBCheck and a real-server run come first.
+
+---
+
+## Phase 10 evidence (real results, 2026-11-23)
+
+### Local checks (Windows 11, CPython 3.12.13, Node 26.13)
+
+The first three Phase 10 runs each had one different Playwright failure. Phase 11 traced them to two races in the browser tests (fixed there, see Phase 11). The run below is after those fixes.
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 194 files already formatted |
+| mypy `--strict` (153 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken |
+| pytest (Core) | **308 passed, 1 skipped** (11 new in `test_ops.py`; the count also includes Phase 11's `test_final_acceptance.py`). The skip is the live Ollama smoke test |
+| License gate | passed: 101 runtime dependencies |
+| ESLint + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **51 passed** |
+| Vite production build | built |
+| Playwright + axe | **19 passed** |
+
+### Ubuntu deployment (the system the procedure was run on)
+
+Ubuntu 24.04.5 LTS userland with Docker Engine 29.10.0 and Docker Compose v5.8.0, **inside a privileged
+container on this Windows machine** (its own `dockerd`, `/var/lib/docker` on a volume). It is not a
+physical or cloud server. Nginx Proxy Manager 2.17.1 runs next to the studio, on the shared `npm_proxy`
+network, with a custom certificate for `books.test` from a private test CA (stands in for Let's Encrypt).
+Ollama 0.40.17 runs in the `ollama` container with `qwen2.5:0.5b` (397 MB), pulled with the documented
+one-off command. Every account and admin password was generated on that system and never left it.
+
+| Step | Command | Result |
+|---|---|---|
+| Install | `install.sh --domain books.test --ollama docker` | `.env`, folders, master key, `npm_proxy` network, image `b534443cd8d3` built, migrated 0 → 0010, app and worker healthy, validation PASSED |
+| Proxy host | NPM API (same fields as the UI): `book-studio-app:8765`, custom cert, Force SSL, the four Advanced lines | `https://books.test/healthz` 200; `http://` → 301 to https |
+| Validate through NPM | `validate.sh --url https://books.test --cacert ca.pem` | 14 PASS: healthy, check OK, **no host port on app, worker or ollama**, trusted subnet matches, data 10001/700, key 400, `/healthz` via NPM, API 401 without sign-in, HSTS and CSP present |
+| End to end | `validation/run_e2e.sh` (below) | **END-TO-END VALIDATION PASSED**: 22 + 5 + 5 + 1 + 6 checks |
+| Update | `update.sh` (a new commit) | verified pre-update backup, new image `231b57488191` built next to the old one, migrate "nothing to do", healthy, validation PASSED |
+| Rollback | `rollback.sh --yes` | back on `b534443cd8d3` with the pre-update backup; a book written after the update is gone from the studio and kept in `data.pre-restore-…`; validation PASSED |
+| Remote Ollama | second Ollama published on the system's own address (stands in for another computer), address added to `PBS_LOCAL_AI_HOSTS` | provider created, connection test OK, model listed; an address not on the list refused (422) |
+| Cloud switch | `PBS_ALLOW_CLOUD=false`, `compose up -d` | allowing cloud in the app → 409 `cloud_disabled_by_operator`; status local-only; local model test still OK |
+| Monitoring | `status.sh`, `diagnose.sh` | jobs/tasks by status, heartbeat 6 s, content counts, disk; diagnostics 9 sections, 0 secrets found in it |
+
+End-to-end run (`run_e2e.sh --url https://books.test`, the representative manuscript "The Lighthouse
+Ledger": three chapters, a section heading, bold and italic, bulleted and numbered lists, a table and
+an embedded PNG figure with a caption):
+
+| # | Prompt 10 step | Result |
+|---|---|---|
+| 9 | Authentication and authorised access | anonymous API 401; wrong password 401; signed in over HTTPS (`deployment: server`); a write without the CSRF token 403 |
+| 1 | Import an existing book | DOCX uploaded and parsed (3 chapters), committed as a new book |
+| 2 | Chapter structure and assets | titles in order; table, lists and emphasis kept; 1 image asset stored, served as PNG, referenced in its chapter |
+| 3 | AI-assisted edit | Ollama connection test OK; model listed; a "revise" job on the first paragraph ran **in the worker** and succeeded |
+| 4 | Review and approve | the suggestion waited as pending; the chapter was unchanged until approval; approved |
+| 5 | New revision | history `imported → ai_generated → human`; the new revision is the head |
+| 6 | Export DOCX, EPUB, PDF | one background task in the worker: DOCX 39,729 bytes, EPUB 81,065 bytes, PDF 38,277 bytes / 7 pages, each downloaded and checked by file signature |
+| 7 | Restart the services | `compose restart app worker`: session still valid; chapters, all 5 revision hashes, the asset and the 3 exported files identical |
+| 7b | Recreate every container | `compose down` (no `-v`) + `up -d`: identical again |
+| 8 | Book, history and assets still exist | as above, after each restart and after the restore |
+| 10 | Backup and restore | `backup.sh` (verified: integrity ok, schema 0010, 2 books, 8 revisions, 2 assets); a book created after it; `restore.sh --yes`: the later book is gone (404) and everything recorded before is identical |
+
+Publishing compliance was **not** assessed: the run proves the files are produced, downloadable and of the
+right type. The studio's preflight findings are not a store's verdict (Phase 07 limitations apply).
+
+### Prompt 10 acceptance → evidence
+
+| Acceptance item | Evidence |
+|---|---|
+| Accessible in a browser | Through Nginx Proxy Manager over HTTPS on the Ubuntu system (validate.sh, e2e); the browser UI itself is the one tested by Playwright (19 specs) |
+| Completes the original book-publishing workflows | e2e steps 1 to 6: import, structure and assets, AI-assisted edit, approval, revision, DOCX/EPUB/PDF |
+| Preserves user data | Identical chapters, revision hashes, assets and exports after a restart, a full container recreation and a restore; data in host folders that no Docker command deletes |
+| Safely restarted, updated, backed up and restored on Ubuntu | restart and recreation (e2e), `update.sh`, `rollback.sh`, `backup.sh`, `restore.sh` all run on the Ubuntu system as above; none removes volumes or data folders (checked: no `down -v`, `volume rm` or `rm -rf` in the scripts; restore and rollback move data aside) |
+
+### Deliverables → where
+
+| Deliverable | Where |
+|---|---|
+| Working Ubuntu deployment | Run as above (on a containerised Ubuntu, not a physical server) |
+| Docker Compose configuration | `deploy/compose.yaml`, `deploy/compose.publish.yaml`, `deploy/Dockerfile` |
+| Production environment template | `deploy/.env.example` |
+| Persistent storage configuration | Bind mounts under `/srv/book-studio` (DEPLOYMENT §6) |
+| Installation and update instructions | `docs/DEPLOYMENT.md`, `docs/OPERATIONS.md`, `deploy/scripts/install.sh`, `update.sh` |
+| Backup and restore scripts | `deploy/scripts/backup.sh`, `restore.sh`, `rollback.sh` |
+| End-to-end test results | This section; `deploy/validation/` |
+| README, architecture, BUILD_STATE | README, ARCHITECTURE §1.3, SECURITY §7i, ROADMAP, TEST_PLAN §4.4g, ADR-0011, this file |
+
+## Phase 10: what was built
+
+- **Compose for Nginx Proxy Manager** (`deploy/compose.yaml`):
+  - `app` joins the external `npm_proxy` network as `book-studio-app`, with no host port;
+  - `worker` has a heartbeat health check;
+  - optional `ollama` on an internal-only network;
+  - every service has `restart: unless-stopped`, bind-mounted data, a read-only root filesystem, no
+    capabilities and log rotation.
+  - `compose.publish.yaml` publishes Core on one address when NPM runs on another machine.
+  - The Caddy proxy and `make-secret.sh` from Phase 09 are removed.
+- **Core** (`ops.py`, `__main__.py`):
+  - commands `migrate`, `status [--json]`, `check` and `verify-backup`;
+  - `PBS_ALLOW_CLOUD` operator switch (egress gate, privacy endpoint, status, system info);
+  - `PBS_LOCAL_AI_HOSTS` accepts IPv4 addresses for a remote Ollama;
+  - AI status reports both.
+- **UI:** AI settings shows when the operator has turned cloud AI off (the option is disabled with an
+  explanation) and lists the private model hosts.
+- **Scripts** (`deploy/scripts/`):
+  - `common.sh` reads `.env` literally;
+  - `install.sh`, `update.sh`, `backup.sh`, `restore.sh`, `rollback.sh`, `validate.sh`, `status.sh`,
+    `diagnose.sh`.
+- **Validation** (`deploy/validation/`): `make_manuscript.py` (representative DOCX), `e2e_validate.py`
+  (standard library only) and `run_e2e.sh`.
+- **Docs:** `docs/DEPLOYMENT.md` rewritten for NPM, new `docs/OPERATIONS.md`, ADR-0011; README,
+  ARCHITECTURE, SECURITY, ROADMAP and TEST_PLAN updated.
+
+## Decisions taken in Phase 10 (need your validation)
+
+Full text in ADR-0011.
+
+| # | Decision |
+|---|---|
+| P10-1 | Services `app`, `worker`, optional `ollama`. **No separate frontend server, database, Redis or broker** (Core serves the UI; SQLite holds data and the durable queue) |
+| P10-2 | NPM reaches the app over a shared external network as `book-studio-app:8765`; no host port; `compose.publish.yaml` for NPM elsewhere; Caddy removed |
+| P10-3 | Trusted proxies = the shared network's subnet, refreshed by `install.sh`, checked by `validate.sh` |
+| P10-4 | All data in host folders under `/srv/book-studio` (bind mounts), data 10001/700, key 400 |
+| P10-5 | Cold backups (seconds of downtime), verified with the running image, checksum and manifest |
+| P10-6 | Restore and rollback never delete: data moved aside; old images kept; rollback = old image + pre-update backup |
+| P10-7 | Operations commands live in Core; shell scripts only orchestrate Docker |
+| P10-8 | Remote Ollama by IPv4 address or name in `PBS_LOCAL_AI_HOSTS`; host Ollama via `host.docker.internal` |
+| P10-9 | `PBS_ALLOW_CLOUD=false` operator switch overrides the in-app setting |
+| P10-10 | The end-to-end AI step uses a real small local model (`qwen2.5:0.5b`), not the test model |
+
+## Known limitations (Phase 10, honest list)
+
+1. **The "Ubuntu server" was Ubuntu 24.04.5 in a privileged container** on this Windows machine, with its
+   own Docker Engine. A physical or cloud Ubuntu host was not used. Kernel, firewall (`ufw`) and systemd
+   behaviour of a real server were not exercised.
+2. **Let's Encrypt, DNS challenges and VPN access were not tested.** NPM served a custom certificate from a
+   private CA. Devices other than the server itself never connected.
+3. **Ollama installed natively on the host** (`host.docker.internal`) was not tested. The "other computer"
+   was a second Ollama container published on the same system's address.
+4. **Cloud providers were not called with real keys** (no keys used; their adapters keep their offline
+   contract tests). The cloud switch was tested only in the refusing direction.
+5. **The AI edit's quality was not judged**: a 0.5B model on CPU proves the pipeline, not the writing.
+6. **Publishing compliance was not validated** (KDP, other stores). Files are produced and typed correctly;
+   EPUBCheck is not in the image.
+7. **Backups need a few seconds of downtime** and stay on the same server unless the operator copies them
+   off. There is no built-in off-site copy or encryption of backup archives (the provider keys inside are
+   encrypted; manuscripts are not).
+8. **The Ollama image is not pinned** (`PBS_OLLAMA_TAG=latest` by default) and no image vulnerability scan
+   was run.
+9. Remote Ollama shows the label "Ollama (local)" and the message "running locally" even on another
+   machine (cosmetic; it is treated as a private host).
+10. Executable bits: the scripts are mode 755 in this working tree, but Windows Git may not record that.
+    When committing, the mode must be set in the index (`git update-index --chmod=+x`), or the docs' `sudo
+    deploy/scripts/...` calls need `bash` in front.
+
+## Phase 10: bugs found and fixed
+
+- **Docker-in-Docker overlay failure** in the test system (overlay on overlay): `/var/lib/docker` got its
+  own volume. This only affects the test bed, not the deployment.
+- **Stale trusted-proxy subnet after the proxy network is recreated**: `install.sh` now re-derives it on
+  every run and `validate.sh` fails on a mismatch.
+- **`app` was the app's name on a shared proxy network**, which can clash with other stacks: it now has the
+  alias `book-studio-app`.
+- **One-off `docker compose run` steps swallowed the calling script's standard input** (found when a piped
+  script stopped after `update.sh`): they now read from `/dev/null`. `update.sh` also hid the backup's
+  progress lines; it now shows them.
+- **`validate.sh` could not check HTTPS with a private CA**: added `--cacert`.
+- **Backup verification missed data still in SQLite's WAL** and let a raw SQLite error escape: both fixed
+  (`test_ops.py`).
+- **DEPLOYMENT's first draft listed data folders that do not exist** (`exports/`, `publishing/`): corrected
+  from the real layout on the Ubuntu system (`projects/<book>/publish/`, `originals/sha256/`, `narration/`).
+
+## Phase 11 handoff
+
+Phase 11 is not defined. Preserve: no destructive commands in scripts; data only in host folders; verified
+backups; rollback = old image + pre-update backup; deny-by-default sign-in and CSRF; the operator's cloud
+switch. Candidates:
+- run the same procedure on a real Ubuntu server, with Let's Encrypt (DNS challenge) and a VPN;
+- off-site, encrypted backups;
+- an image vulnerability scan and a pinned Ollama tag;
+- imports as background tasks (Phase 09 limitation 2);
+- Phase 08 data in per-book backups;
+- the open desktop-era gates (feature matrix, performance numbers, release checklist).
+
+---
+
+## Phase 09 evidence (real results, 2026-11-23, Windows 11, CPython 3.12.13, Node 26.13, Docker 29.9.2)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 191 files already formatted |
+| mypy `--strict` (152 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken |
+| pytest (Core) | **296 passed, 1 skipped** (26 new in `test_web.py`, 1 new real-process test; existing tests now sign in). The skip is the Ollama smoke test (no local Ollama) |
+| License gate | passed: 101 runtime dependencies (`cryptography` is now direct; `cffi`, `pycparser` with it) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **51 passed** (new `Auth.test.tsx`, 5 tests) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **19 passed** (new `web.spec.ts`; every earlier spec now runs signed in) |
+| Migrations | head `0010`; fresh → head, upgrade from 0001 preserving content, models ≡ migrations |
+
+Docker (manual run, recorded here; not part of `test.ps1`): `docker compose -f deploy/compose.yaml build` built
+`personal-book-studio:local` (557 MB). The full stack (proxy, app, worker) was started under Docker Desktop's
+Linux engine with a throwaway key and the name `books.localhost`, then checked over HTTPS with `curl`:
+
+| Step | Result |
+|---|---|
+| `/healthz` and `/` through Caddy (`tls internal`) | 200; the UI's `index.html` with the CSP, HSTS and `X-Frame-Options: DENY` headers |
+| `GET /api/projects` without signing in | 401 |
+| Setup code read with `docker compose exec app cat /data/runtime/setup-code.txt`; setup | signed in; cookie `__Host-pbs_session` (Secure); `deployment: server` |
+| Create a book and chapter, save text | 200 |
+| The same write without `X-PBS-CSRF` | 403 |
+| `POST .../publishing/build-task` for EPUB and PDF | the **worker** container built both (`succeeded`); `worker_running: true`; schema `0010` |
+| Store an OpenAI key (canary) | store `encrypted-file`, secure; the canary is in none of `secrets.enc.json`, `studio.db`, `core.jsonl` |
+| Setup code in container or file logs | 0 occurrences |
+| `docker compose restart app worker`, then read with the same cookie | revision 1 and the exact text; the session survived |
+| `http://127.0.0.1:8765` from the host | no answer (Core has no published port) |
+
+The stack and its volumes were removed afterwards and the throwaway key deleted. **It has not been run on a real
+Ubuntu host.**
+
+Existing data: a copy of the dev workspace (4 books, 6 chapters, 6 revisions, 1 series, 5 canon entities) was opened
+by the new Core: schema 0009 → 0010 with a snapshot (`db-backups/studio-0009-….db`); a hash of every row in
+`project`, `chapter`, `chapter_revision`, `series`, `canon_entity` and `translation_edition` is identical before and
+after.
+
+### Prompt 09 acceptance → evidence
+
+| Acceptance item | Where it is proven |
+|---|---|
+| Application runs through a standard web browser | It always did: no Tauri or Electron code existed (ADR-0010 §2). Core now also serves the built UI itself (`PBS_UI_DIST`; `test_built_ui_is_served_without_exposing_other_files`; the Docker run above). Playwright drives Chromium against Core through the whole suite |
+| No desktop application is required | Nothing desktop remains: the per-launch token, the Vite token injection and the loopback-only rule for servers are gone; `local` deployment still refuses non-loopback binds. The desktop packaging plan is retired (ADR-0010, ROADMAP) |
+| Features from Phases 01 to 08 remain functional | The whole existing suite passes behind sign-in (pytest, Vitest, every Playwright spec including Phase 08's acceptance) — see the table above. `test_existing_content_survives_and_phase08_routes_work_when_signed_in` |
+| Authentication and file security tests pass | `test_web.py` (26 tests): every one of the 219 API operations needs a session; every write needs the CSRF token; setup code; throttling; cookie flags; logout, password change and reset end sessions; idle and absolute expiry; security headers; oversized and streamed bodies; server-mode cookie and HSTS; built-UI and file-endpoint traversal probes; content-typed uploads; encrypted key store. `test_security.py` (guard). `Auth.test.tsx`, `e2e/web.spec.ts` |
+| Existing book data and revisions remain intact | Migration `0010` only adds tables; `test_migrations.py` (fresh, upgrade from 0001 preserving content, models ≡ migrations); the dev-workspace copy above; `test_content_survives_hard_kill_and_restart` |
+| Structurally ready for Ubuntu Docker deployment | `deploy/Dockerfile`, `deploy/compose.yaml`, `deploy/Caddyfile`, `deploy/.env.example`, `deploy/make-secret.sh`, `.dockerignore`, `docs/DEPLOYMENT.md`; built and run under Docker as above |
+
+### Other Phase 09 requirements → evidence
+
+| Requirement | Evidence |
+|---|---|
+| Inspect and document findings and migration decisions | `docs/ADR/0010-web-deployment.md` §2 (findings) and §4 (P9-1 to P9-13) |
+| Durable worker jobs for generation, AI, imports, exports | AI and generation jobs already ran in the durable runner; it now runs in a separate `worker` process (`test_separate_web_and_worker_processes`: the web process only queues; the worker runs a queued AI job and an EPUB build; a second worker refuses to start). Publishing builds, covers, packages and audio export are durable tasks (`test_publishing_build_runs_as_a_durable_task`, crash recovery, failure kept). **Imports remain synchronous** (P9-10, limitation 2) |
+| Persistent server-side storage | One `/data` volume, unchanged workspace layout (DEPLOYMENT §1) |
+| All existing local and cloud providers | Unchanged adapters and egress gate; `PBS_LOCAL_AI_HOSTS` adds private hosts (`test_configured_private_model_host_is_local_and_nothing_else_is`) |
+| Replace desktop file system calls and dialogs | None existed: uploads and downloads were already HTTP (ADR-0010 §2) |
+| Secure handling of API keys | `test_encrypted_key_store_keeps_no_plaintext_and_fails_closed`, `test_server_without_key_file_never_falls_back_to_a_desktop_keyring`, the Docker canary check |
+| Upload type and size validation; path traversal | `test_oversized_request_is_refused_before_it_is_read`, `test_streamed_body_over_the_limit_is_cut_off`, `test_uploads_check_type_by_content_not_name`, `test_file_endpoints_refuse_path_tricks`, plus the Phase 02 archive and import tests |
+| Safe processing of untrusted documents | Unchanged Phase 02/04 controls (defusedxml, archive limits, nh3, no raw HTML), still passing |
+| CSRF, CORS, security headers | `test_every_state_changing_route_requires_the_session_csrf_token`, `test_security_headers_on_every_response`, `test_allowed_origin_works_and_no_cors_headers`, `test_preflight_gets_no_cors_approval` |
+| Private-by-default network; nothing exposed | Compose: only the proxy publishes, on 127.0.0.1 by default; Ollama on an internal network; Core unreachable from the host in the Docker run |
+| Background job persistence and recovery | `test_ai_job_survives_hard_kill_without_double_apply` (real process kill), `test_task_left_running_by_a_crash_is_retried_then_interrupted` |
+| Manuscripts and revisions survive restarts | `test_content_survives_hard_kill_and_restart` (now also: the session survives; signed-out stays signed out), `e2e/web.spec.ts`, the Docker restart |
+| Local-only AI with cloud disabled | Existing `test_golden_path` and Phase 08 local-only tests still pass; egress unchanged |
+| Browser functionality without a desktop runtime | Every Playwright spec; `e2e/web.spec.ts` covers setup, sign-in, sign-out, restart |
+
+## Phase 09: what was built
+
+- **Accounts and sessions** (`services/auth.py`, `security/passwords.py`, `api/routes_auth.py`, tables `user_account` and `auth_session`): first-run setup with a one-time code; sign-in, sign-out, password change, "sign out other browsers"; command-line `create-user` and `reset-password`.
+- **Request guard** (`security/guard.py`, replacing the loopback token guard): Host and Origin checks, deny-by-default session check for `/api`, CSRF token on writes, request-size limit, security headers.
+- **Server mode** (`config.py`): `PBS_DEPLOYMENT=server` with `PBS_PUBLIC_ORIGIN`, `PBS_TRUSTED_PROXIES`, `PBS_ROLE` (`all`, `web`, `worker`), `PBS_UI_DIST`, `PBS_LOCAL_AI_HOSTS`, session limits. Local mode keeps the loopback-only rule.
+- **Encrypted key store** (`security/secrets.py`, `EncryptedFileStore`) with the master key from a Docker secret; `cryptography` added as a direct dependency (it was already in the lock file as a transitive one).
+- **Background worker**: `python -m pbs_core worker`, an exclusive file lock (`storage/locks.py`), a heartbeat shown in the UI; **durable background tasks** (`services/tasks.py`, table `background_task`) for publishing builds, covers, packages and audio export, with `/build-task`, `/covers-task`, `/package-task`, `/narration/export-task` and `GET /api/tasks/{id}`.
+- **Core serves the built UI** with SPA fallback and long-lived caching for hashed assets.
+- **UI**: sign-in and setup screens (`features/auth/AuthGate.tsx`), Account page, CSRF header on every write, return to sign-in when a session ends, builds and audio export run through the task queue (same buttons, `runTask` polling), a worker-not-running notice on servers, updated Help text and key-store label, styles for untyped and password inputs.
+- **Deployment**: `deploy/` (Dockerfile, Compose, Caddyfile, `.env.example`, `make-secret.sh`, `secrets/.gitignore`), `.dockerignore`, `docs/DEPLOYMENT.md`.
+- **Docs**: ADR-0010; ARCHITECTURE §1 note, §1.2 and §10; SECURITY §7h; DATA_MODEL §3.11; TEST_PLAN §4.4f; ROADMAP phases 09 and 10; README; ADR-0001 §6 marked superseded.
+
+## Decisions taken in Phase 09 (need your validation)
+
+Full text in ADR-0010 §4.
+
+| # | Decision |
+|---|---|
+| P9-1 | Browser-first; the Tauri desktop plan is retired. `local` deployment stays for development |
+| P9-2 | Keep SQLite; one web process and one worker on one host; volume on a local disk |
+| P9-3 | **One account per studio**; authorization is "signed-in owner", enforced deny-by-default for every `/api` route. No multi-user |
+| P9-4 | scrypt n=2^17, r=8, p=1; at least 12 characters, no composition rules |
+| P9-5 | Session cookie `HttpOnly`, `SameSite=Strict`, `__Host-` + `Secure` on https; hashed tokens; idle 12 h, absolute 14 days (my judgement, configurable) |
+| P9-6 | Per-session CSRF token in `X-PBS-CSRF` on every write, plus Origin/Fetch-metadata checks |
+| P9-7 | First account via the one-time setup code file, or the server command line |
+| P9-8 | AES-256-GCM key store; master key as a Docker secret outside the data volume; fail closed |
+| P9-9 | TLS at Caddy; ports published on 127.0.0.1 by default; Core trusts forwarded headers only from the proxy's fixed address |
+| P9-10 | Builds, covers, packages and audio export run as durable tasks; imports stay synchronous |
+| P9-11 | `PBS_LOCAL_AI_HOSTS` operator allowlist for private model hosts; Ollama on an internal network |
+| P9-12 | Sign-in throttling in memory: 5 failures / 15 minutes per address and per username |
+| P9-13 | Core serves the built UI with strict headers |
+
+## Known limitations (Phase 09, honest list)
+
+1. **Not run on a real Ubuntu host.** The image and Compose stack were built and run with Docker Desktop's Linux engine on Windows. Caddy's ACME (public certificate) path was not exercised; only `tls internal`.
+2. **Imports are still synchronous** (P9-10). A large Word or PDF import runs inside the request; Caddy has no response timeout by default, but a slow import blocks that one request.
+3. **One account only.** No multi-user, roles, or per-book sharing.
+4. **Sign-in throttling is per process and in memory**; a restart clears it.
+5. **Whole-studio backup of the Docker volume is a documented manual command**, not a feature. Per-book backups still omit Phase 08 data (Phase 08 limitation 6) and, by design, accounts and sessions.
+6. **No automated vulnerability scan of the image** (for example Trivy or Docker Scout) was run, and the `ollama/ollama` image is not pinned to a version.
+7. The original Phase 09 gates written for the desktop plan (feature matrix, performance on the 100-chapter fixture, release checklist) were not part of this redefined phase and are **not done**.
+8. The visual check created a throwaway workspace (deleted afterwards). Your `.pbs-data` was not opened by the new Core, so on your next `scripts/dev.ps1` it migrates to 0010 (with a snapshot) and asks you to create the account with the setup code.
+
+## Phase 09: bugs found and fixed
+
+- **The Compose proxy's fixed address collided** first with another project's Docker network on this machine and then with the address Docker gave the app container. The subnet, the automatic range and the proxy address are now configurable, with the proxy outside the automatic range by default.
+- **Password and untyped inputs had no field styling** (visual check of the sign-in pages); the global input rule now covers them, which also improves untyped inputs on earlier pages.
+- **The Account page's form had no spacing and its buttons stretched** (visual check). Fixed with a scoped form style.
+- **The new sign-in test fixture ran Windows out of socket buffers** (WinError 10055) in a full run: it signed in before entering the TestClient, so each request started its own event loop. Clients are now entered first, then signed in.
+- **The first route-enumeration test found no routes**: this FastAPI version wraps included routers, so the test now reads the OpenAPI schema (219 operations).
+
+## Phase 10 handoff
+
+Phase 10 is not defined yet (the desktop plan is retired). Preserve: deny-by-default sign-in, CSRF on writes, hashed
+sessions, the encrypted key store and the one-worker lock. Candidates:
+- run the stack on a real Ubuntu LTS host, including a public ACME certificate;
+- move imports to the task queue;
+- an image vulnerability scan in CI and a pinned Ollama image;
+- a scheduled whole-volume backup;
+- Phase 08 data in per-book backups;
+- the open desktop-era gates (feature matrix, performance numbers, release checklist).
+
+---
 
 ## Phase 08 evidence (real results, 2026-11-23, Windows 11, CPython 3.12.13, Node 26.13)
 
@@ -949,6 +1341,19 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 11: Final acceptance testing and stabilisation (2026-11-23)
+- Audited every PRD requirement against its tests (FEATURE_MATRIX), ran a full publishing simulation with per-format inspection, re-verified the Ubuntu deployment (including an isolated restore and a killed worker), measured NFR-4 for the first time, fixed the defects found, and wrote the five release documents.
+- EPUBCheck could not be run: downloading it was refused by this session's permission settings.
+
+### Phase 10: Ubuntu deployment and operations (2026-11-23)
+- Built the Compose setup for Nginx Proxy Manager, operations scripts and end-to-end validation; ran them on Ubuntu 24.04.5 (containerised) behind NPM 2.17.1 with a real local model.
+
+### Phase 09: Production hardening and web architecture (2026-11-23)
+- Inspected the app first (ADR-0010 §2): no desktop shell existed; the desktop assumptions were the loopback-only bind, the per-launch token injected by the Vite proxy, the OS keyring and the in-request builds.
+- Built as described in "Phase 09: what was built", in the same working tree as Phase 08 (both uncommitted).
+- OWASP's Password Storage Cheat Sheet was read on 2026-11-23 for the scrypt parameters.
+- Checked with the full test script, a real Docker build and Compose run over HTTPS, an upgrade of a copy of the dev workspace, and by hand in the desktop browser pane (setup, sign-in, Account) with a throwaway workspace.
 
 ### Phase 08: Advanced features (2026-11-23)
 - Built as described in "Phase 08: what was built" on `phase/08-advanced`.

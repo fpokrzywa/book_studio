@@ -26,5 +26,8 @@ until curl -fs "http://127.0.0.1:$PBS_PORT/healthz" >/dev/null 2>&1; do
   kill -0 "$CORE_PID" 2>/dev/null || { echo "Core exited during startup." >&2; exit 1; }
   sleep 0.3
 done
+if [ -f "$PBS_WORKSPACE/runtime/setup-code.txt" ]; then
+  echo "First run: create the studio account in the browser with the setup code in $PBS_WORKSPACE/runtime/setup-code.txt"
+fi
 echo "Open http://127.0.0.1:$PBS_UI_PORT in your browser. Press Ctrl+C to stop."
 cd "$ROOT/apps/studio-ui" && pnpm dev

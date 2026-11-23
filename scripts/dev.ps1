@@ -42,6 +42,10 @@ try {
         } catch { Start-Sleep -Milliseconds 300 }
         if ($core.HasExited) { throw "Core exited during startup (see messages above)." }
     }
+    $SetupCode = Join-Path $Workspace "runtime\setup-code.txt"
+    if (Test-Path $SetupCode) {
+        Write-Host "First run: create the studio account in the browser with the setup code in $SetupCode"
+    }
     Write-Host "Open http://127.0.0.1:$UiPort in your browser. Press Ctrl+C to stop."
     Push-Location (Join-Path $Root "apps\studio-ui")
     try { pnpm dev } finally { Pop-Location }

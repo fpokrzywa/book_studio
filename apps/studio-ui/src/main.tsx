@@ -11,6 +11,7 @@ import "./styles/planning.css";
 import "./styles/writing.css";
 import "./styles/publishing.css";
 import "./styles/advanced.css";
+import "./styles/auth.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
@@ -19,6 +20,7 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { routes } from "./app/routes";
 import { AnnouncerProvider } from "./components/Announcer";
 import { ApiError } from "./api/client";
+import { AuthGate } from "./features/auth/AuthGate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,7 +42,9 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AnnouncerProvider>
-        <RouterProvider router={router} />
+        <AuthGate>
+          <RouterProvider router={router} />
+        </AuthGate>
       </AnnouncerProvider>
     </QueryClientProvider>
   </StrictMode>,

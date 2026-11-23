@@ -120,6 +120,9 @@ Legend: ✅ low risk · ⚠ verify · ⛔ avoid
 
 ## 6. Python sidecar bundling constraints (Phase 10 preview)
 
+> Superseded by ADR-0010 (2026-11-23): the studio is now a self-hosted web application and no desktop
+> sidecar is planned. This section is kept for the record.
+
 1. A separate PyInstaller build per target triple (`x86_64-pc-windows-msvc`, `aarch64-apple-darwin`, `x86_64-apple-darwin`). Tauri's `externalBin` requires the `-<target-triple>` suffix.
 2. Native libs (Pango/cairo/harfbuzz/fontconfig for WeasyPrint) must be collected and, on macOS, each dylib codesigned with hardened runtime before notarization.
 3. Startup time of a onedir bundle (~1–3 s) needs a splash/"starting" state in the shell.

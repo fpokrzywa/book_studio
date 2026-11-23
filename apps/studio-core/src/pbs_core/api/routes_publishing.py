@@ -8,6 +8,7 @@ from fastapi import APIRouter, Response, status
 from fastapi.responses import FileResponse, HTMLResponse
 
 from pbs_core.api.routes import ERRORS, Ctx
+from pbs_core.contracts_auth import TaskOut
 from pbs_core.contracts_publishing import (
     BuildIn,
     BuildOut,
@@ -18,7 +19,7 @@ from pbs_core.contracts_publishing import (
     ProfileOut,
     PublicationOut,
 )
-from pbs_core.services import publishing
+from pbs_core.services import publishing, tasks
 
 router = APIRouter(prefix="/api/projects/{project_id}/publishing", responses=ERRORS, tags=["publishing"])
 
@@ -47,6 +48,22 @@ def put_profile(ctx: Ctx, project_id: str, body: ProfileIn) -> ProfileOut:
 @router.post("/build", status_code=status.HTTP_201_CREATED)
 def build(ctx: Ctx, project_id: str, body: BuildIn) -> BuildOut:
     return publishing.build(ctx, project_id, body)
+
+
+@router.post("/build-task", status_code=status.HTTP_202_ACCEPTED)
+def build_task(ctx: Ctx, project_id: str, body: BuildIn) -> TaskOut:
+    """Queue the build in the background worker; poll GET /api/tasks/{id} for the BuildOut result."""
+    return tasks.enqueue(ctx, "publishing.build", project_id, body.model_dump(mode="json"))
+
+
+@router.post("/covers-task", status_code=status.HTTP_202_ACCEPTED)
+def covers_task(ctx: Ctx, project_id: str) -> TaskOut:
+    return tasks.enqueue(ctx, "publishing.covers", project_id)
+
+
+@router.post("/package-task", status_code=status.HTTP_202_ACCEPTED)
+def package_task(ctx: Ctx, project_id: str) -> TaskOut:
+    return tasks.enqueue(ctx, "publishing.package", project_id)
 
 
 @router.get("/cover-spec")

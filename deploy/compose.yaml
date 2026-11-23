@@ -1,0 +1,107 @@
+# Personal Book Studio on an Ubuntu server behind Nginx Proxy Manager (docs/DEPLOYMENT.md).
+#
+# Install:  sudo deploy/scripts/install.sh --domain books.example.com
+# Update:   sudo deploy/scripts/update.sh
+# Backup:   sudo deploy/scripts/backup.sh
+#
+# Services: app (web API + the built UI, the only HTTP service), worker (AI jobs, builds, exports)
+# and, optionally, ollama. There is no separate database, Redis or queue server: SQLite holds the
+# books, settings and the durable job queue (ADR-0010 P9-2, ADR-0011).
+#
+# Nothing is published on the host. Nginx Proxy Manager reaches `book-studio-app:8765` over the shared Docker
+# network PBS_PROXY_NETWORK. (For NPM on another machine, add compose.publish.yaml: see the docs.)
+# All data lives in host folders (bind mounts), so no Docker command removes it, `down -v` included.
+
+name: book-studio
+
+x-core: &core
+  image: personal-book-studio:${PBS_IMAGE_TAG:-local}
+  restart: unless-stopped
+  secrets: [pbs_master_key]
+  volumes:
+    - type: bind
+      source: ${PBS_DATA_DIR:?set PBS_DATA_DIR in deploy/.env}
+      target: /data
+  read_only: true
+  tmpfs: ["/tmp"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  extra_hosts: ["host.docker.internal:host-gateway"] # Ollama installed on the server itself
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+x-env: &env
+  PBS_PUBLIC_ORIGIN: https://${PBS_DOMAIN:?set PBS_DOMAIN in deploy/.env}
+  PBS_SECRET_KEY_FILE: /run/secrets/pbs_master_key
+  PBS_LOCAL_AI_HOSTS: '${PBS_LOCAL_AI_HOSTS:-["ollama"]}'
+  PBS_ALLOW_CLOUD: ${PBS_ALLOW_CLOUD:-true}
+  PBS_LOG_LEVEL: ${PBS_LOG_LEVEL:-INFO}
+  PBS_SESSION_IDLE_MINUTES: ${PBS_SESSION_IDLE_MINUTES:-720}
+  PBS_SESSION_MAX_DAYS: ${PBS_SESSION_MAX_DAYS:-14}
+  PBS_MAX_UPLOAD_MB: ${PBS_MAX_UPLOAD_MB:-200}
+
+services:
+  app:
+    <<: *core
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        WITH_ESPEAK: ${PBS_WITH_ESPEAK:-0}
+        PBS_REVISION: ${PBS_IMAGE_TAG:-local}
+    command: ["serve"]
+    environment:
+      <<: *env
+      PBS_ROLE: web
+      PBS_TRUSTED_PROXIES: '${PBS_TRUSTED_PROXIES:?run install.sh or set PBS_TRUSTED_PROXIES}'
+    expose: ["8765"] # reachable only on the Docker networks below; never published on the host
+    networks:
+      proxy:
+        aliases: [book-studio-app] # NPM forwards to http://book-studio-app:8765 (unique on a shared network)
+      backend: {}
+      egress: {}
+
+  worker:
+    <<: *core
+    depends_on:
+      app:
+        condition: service_healthy # the web process runs database migrations first
+    command: ["worker"]
+    environment:
+      <<: *env
+      PBS_ROLE: worker
+    networks: [backend, egress] # egress: cloud AI or a remote Ollama, only when allowed in the app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(time.time() - os.path.getmtime('/data/runtime/worker.heartbeat') > 60)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # Optional local models in Docker (PBS_OLLAMA=docker makes the scripts add `--profile local-ai`).
+  # In AI settings use the address http://ollama:11434. No internet access and no published port.
+  ollama:
+    profiles: ["local-ai"]
+    image: ollama/ollama:${PBS_OLLAMA_TAG:-latest}
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ${PBS_OLLAMA_DIR:-/srv/book-studio/ollama}
+        target: /root/.ollama
+    networks: [backend]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  proxy:
+    external: true
+    name: ${PBS_PROXY_NETWORK:-npm_proxy}
+  backend:
+    internal: true
+  egress: {}
+
+secrets:
+  pbs_master_key:
+    file: ${PBS_MASTER_KEY_FILE:?set PBS_MASTER_KEY_FILE in deploy/.env}

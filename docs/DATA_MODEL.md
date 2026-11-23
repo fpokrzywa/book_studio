@@ -303,6 +303,18 @@ Each transition is written in one transaction together with a `job_log` row.
 
 `author_profile` gains `pen_name` and `voice_rules_json`.
 
+### 3.11 Phase 09 tables (migration `0010_web`, adds tables only)
+
+| Table | Purpose and key rules |
+|---|---|
+| `user_account` | The studio's one account: lower-case `username` (unique), scrypt `password_hash`, `role` (`owner` only), `disabled`, `password_changed_at`. Never in per-book backups or exports |
+| `auth_session` | One signed-in browser: SHA-256 `token_hash` (unique; the token itself is never stored), its `csrf_token`, `created_at`, `last_seen_at`, absolute `expires_at`, a short user agent. Deleted on sign-out, expiry, password change or reset |
+| `background_task` | Durable non-AI work for the worker: `kind` (`publishing.build`, `publishing.covers`, `publishing.package`, `narration.export`), `project_id`, `status` (queued, running, succeeded, failed, interrupted), input and result JSON, error code and message, attempts, lease owner |
+
+Files added to `<workspace>/runtime/` (never backed up or exported): `setup-code.txt` (until the account
+exists), `secrets.enc.json` (server key store), `worker.lock`, `worker.heartbeat`. The old
+`session.token` file is deleted at startup.
+
 ## 4. Editing document schema: BookMD and BDM
 
 **As built (Phase 02):** `pbs_core/document/bookmd.py` (parser, `bookmd-1.0` → `bdm/1`), `serialize.py` (bdm/1 → BookMD normal form) and `html.py` (renderer + nh3 sanitizer). Differences from the design below:

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
+import { useSystemInfo } from "../api/hooks";
 import { PrivacyBadge } from "../components/Misc";
 import { ErrorBoundary } from "./ErrorBoundary";
 
@@ -22,6 +23,7 @@ const WORKING: NavItem[] = [
   { to: "/voice", label: "Author voice" },
   { to: "/activity", label: "Activity" },
   { to: "/help", label: "Help" },
+  { to: "/account", label: "Account" },
 ];
 
 /** Later-phase sections: visible so the roadmap is honest, but not navigable. */
@@ -32,6 +34,8 @@ export function AppShell() {
   // The small-screen menu is open only for the page it was opened on, so navigating closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === location.pathname;
+  const system = useSystemInfo();
+  const server = system.data?.deployment === "server";
 
   return (
     <>
@@ -42,7 +46,7 @@ export function AppShell() {
         <nav className="nav" aria-label="Main" id="main-nav" data-open={open}>
           <NavLink to="/" className="brand">
             Personal Book Studio
-            <small>Your books, on this computer</small>
+            <small>{server ? "Your books, on your own server" : "Your books, on this computer"}</small>
           </NavLink>
           <ul>
             {WORKING.slice(0, 6).map((item) => (
@@ -96,6 +100,12 @@ export function AppShell() {
             </button>
             <PrivacyBadge />
           </div>
+          {server && system.data?.worker_running === false ? (
+            <p className="worker-warning" role="status">
+              The background worker is not running, so AI jobs, builds and exports will wait in the queue.
+              Whoever runs the server can start it with <code>docker compose up -d worker</code>.
+            </p>
+          ) : null}
           <main id="main" className="content" tabIndex={-1}>
             <ErrorBoundary resetKey={location.pathname}>
               <Outlet />

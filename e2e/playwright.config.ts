@@ -3,7 +3,10 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // One workspace path for the run; each test wipes it and starts a fresh Core (see fixtures.ts).
-process.env.PBS_E2E_WORKSPACE ??= path.join(os.tmpdir(), `pbs-e2e-${process.pid}`);
+process.env.PBS_E2E_WORKSPACE ??= path.join(
+  os.tmpdir(),
+  `pbs-e2e-${process.pid}`,
+);
 const CORE_PORT = Number(process.env.PBS_E2E_CORE_PORT ?? 18765);
 const UI_PORT = Number(process.env.PBS_E2E_UI_PORT ?? 15173);
 process.env.PBS_E2E_CORE_PORT = String(CORE_PORT);

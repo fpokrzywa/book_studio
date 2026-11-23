@@ -1,29 +1,11 @@
-"""Per-launch session token shared between Core and the UI host (dev proxy / Tauri shell)."""
+"""File-system permissions for the runtime folder (setup code, encrypted keys, worker lock)."""
 
 from __future__ import annotations
 
-import hmac
 import os
-import secrets
 import subprocess
 import sys
 from pathlib import Path
-
-import structlog
-
-from pbs_core.storage.paths import atomic_write_bytes
-
-log = structlog.get_logger(__name__)
-
-
-def generate_token() -> str:
-    return secrets.token_urlsafe(32)  # 256 bits
-
-
-def tokens_equal(a: str | None, b: str) -> bool:
-    if a is None:
-        return False
-    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
 
 def _current_user_sid() -> str | None:
@@ -63,12 +45,3 @@ def restrict_directory(path: Path) -> bool:
     except OSError:
         return False
     return True
-
-
-def write_token(runtime_dir: Path, token_path: Path, token: str) -> None:
-    runtime_dir.mkdir(parents=True, exist_ok=True)
-    if not restrict_directory(runtime_dir):
-        log.warning("runtime_dir_acl_not_restricted", path=str(runtime_dir))
-    atomic_write_bytes(token_path, token.encode("ascii"))
-    if sys.platform != "win32":
-        os.chmod(token_path, 0o600)

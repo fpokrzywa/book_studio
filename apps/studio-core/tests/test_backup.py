@@ -85,7 +85,7 @@ def test_backup_then_restore_is_equivalent_and_never_overwrites(client: TestClie
     before = snapshot(client, pid)
     data = make_backup(client, pid)
     manifest = json.loads(zipfile.ZipFile(io.BytesIO(data)).read("manifest.json"))
-    assert manifest["schema"] == "manifest/1" and manifest["schema_revision"] == "0009"
+    assert manifest["schema"] == "manifest/1" and manifest["schema_revision"] == "0010"
     assert manifest["tables"]["chapter_revision"] >= 6 and any(
         f["path"].startswith("files/assets/") for f in manifest["files"]
     )

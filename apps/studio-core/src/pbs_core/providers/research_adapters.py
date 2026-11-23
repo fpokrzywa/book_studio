@@ -20,7 +20,7 @@ from pbs_core.providers.egress import EgressBlockedError, EgressPermit, check, g
 
 OPENLIBRARY_URL = "https://openlibrary.org/search.json"
 OPENLIBRARY_FIELDS = "key,title,author_name,first_publish_year,publisher,edition_count,subject"
-USER_AGENT = "PersonalBookStudio/0.1 (local desktop app)"
+USER_AGENT = "PersonalBookStudio/0.1 (self-hosted book authoring studio)"
 LABELS = {
     "openlibrary": "Open Library (public book metadata)",
     "mock": "Built-in test catalogue (not real data)",

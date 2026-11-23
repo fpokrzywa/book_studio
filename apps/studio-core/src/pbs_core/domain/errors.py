@@ -32,3 +32,18 @@ class ArchivedError(DomainError):
 class ValidationFailedError(DomainError):
     status = 422
     code = "validation_failed"
+
+
+class UnauthorizedError(DomainError):
+    status = 401
+    code = "not_signed_in"
+
+
+class ForbiddenError(DomainError):
+    status = 403
+    code = "forbidden"
+
+
+class TooManyAttemptsError(DomainError):
+    status = 429
+    code = "too_many_attempts"

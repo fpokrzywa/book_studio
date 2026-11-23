@@ -343,6 +343,7 @@ class RevisionTag(Base):
 from pbs_core.storage import (  # noqa: E402, F401
     advanced_models,
     ai_models,
+    auth_models,
     knowledge_models,
     planning_models,
     publishing_models,

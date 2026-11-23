@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.1",
     "anthropic>=2.12.0",
+    "cryptography>=46",
     "defusedxml>=0.7.1",
     "fastapi>=0.165.0",
     "keyring>=25.7.0",
@@ -62,7 +63,7 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]  # typographic quotes are intent
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S603", "S607", "S108", "E501", "W291"]  # fixtures keep intentional trailing spaces
-"src/pbs_core/security/token.py" = ["S603", "S607"]
+"src/pbs_core/security/fs.py" = ["S603", "S607"]
 "src/pbs_core/migrations/**" = ["E501"]
 
 [tool.mypy]

@@ -4,6 +4,8 @@
 * Concurrency is bounded (default 2 jobs at once; 1 per local Ollama server).
 * On startup, jobs left `running` by a previous process are re-queued (or marked `interrupted`
   once their attempts are used up). The final commit is idempotent: a proposal is UNIQUE per job.
+* The same loop runs durable background tasks (services/tasks.py), one at a time.
+* A heartbeat file (runtime/worker.heartbeat) lets the web process report whether a worker is alive.
 * Cancellation is cooperative: an in-memory event for instant response plus a DB flag that the
   worker re-reads while streaming, so a cancel from any process is honoured.
 """
@@ -12,6 +14,7 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
@@ -25,6 +28,8 @@ from pbs_core.storage.ai_models import Job, JobLog
 
 log = structlog.get_logger(__name__)
 LEASE_SECONDS = 300
+HEARTBEAT_SECONDS = 15
+HEARTBEAT_FILE = "worker.heartbeat"
 
 
 def add_log(s: Session, ctx: AppContext, job_id: str, message: str, level: str = "info") -> None:
@@ -39,15 +44,22 @@ class JobRunner:
         self._workers = threading.Semaphore(workers)
         self._ollama = threading.Semaphore(1)
         self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="pbs-job")
+        self._tasks_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pbs-task")
         self._stop = threading.Event()
         self._wake = threading.Event()
         self._cancel: dict[str, threading.Event] = {}
         self._cancel_lock = threading.Lock()
         self._thread: threading.Thread | None = None
+        self._task_slot = threading.Semaphore(1)
+        self._last_beat = 0.0
 
     # ---------- lifecycle ----------
     def start(self) -> None:
         self.recover()
+        from pbs_core.services import tasks
+
+        tasks.recover(self.ctx)
+        self.heartbeat(force=True)
         self._thread = threading.Thread(target=self._loop, name="pbs-job-runner", daemon=True)
         self._thread.start()
 
@@ -60,9 +72,20 @@ class JobRunner:
         if self._thread is not None:
             self._thread.join(timeout=5)
         self._pool.shutdown(wait=True, cancel_futures=True)
+        self._tasks_pool.shutdown(wait=True, cancel_futures=True)
 
     def wake(self) -> None:
         self._wake.set()
+
+    def heartbeat(self, *, force: bool = False) -> None:
+        now = time.monotonic()
+        if force or now - self._last_beat >= HEARTBEAT_SECONDS:
+            self._last_beat = now
+            path = self.ctx.workspace.runtime_dir / HEARTBEAT_FILE
+            try:
+                path.write_text(self.ctx.clock.iso(), encoding="ascii")
+            except OSError:
+                log.warning("heartbeat_write_failed")
 
     def recover(self) -> int:
         """Jobs a crashed or stopped process left running are run again or marked interrupted."""
@@ -149,8 +172,45 @@ class JobRunner:
                 self._cancel.pop(job_id, None)
             self._wake.set()
 
+    def run_tasks_until_idle(self, limit: int = 20) -> int:
+        from pbs_core.services import tasks
+
+        n = 0
+        while n < limit and tasks.run_once(self.ctx, self.owner):
+            n += 1
+        return n
+
+    def _start_task(self) -> bool:
+        """Claim one background task if the task slot is free; run it on the pool."""
+        from pbs_core.services import tasks
+
+        if not self._task_slot.acquire(blocking=False):
+            return False
+        try:
+            task_id = tasks.claim(self.ctx, self.owner)
+        except Exception:
+            log.exception("task_claim_failed")
+            task_id = None
+        if task_id is None:
+            self._task_slot.release()
+            return False
+
+        def work(tid: str = task_id) -> None:
+            try:
+                tasks.run(self.ctx, tid)
+            except Exception:
+                log.exception("task_worker_crashed", task_id=tid)
+            finally:
+                self._task_slot.release()
+                self._wake.set()
+
+        self._tasks_pool.submit(work)
+        return True
+
     def _loop(self) -> None:
         while not self._stop.is_set():
+            self.heartbeat()
+            self._start_task()
             if not self._workers.acquire(timeout=self.poll_seconds):
                 continue
             try:

@@ -169,6 +169,61 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
 - **No invented costs or compliance.** Audio cost comes only from a price the author enters (otherwise "unknown"). Exports state the AI-voice disclosure and that they are not checked against ACX/Audible/KDP audiobook rules.
 - **Downloads are confined.** Audio export names must match a strict pattern, and every file path goes through `safe_join`.
 
+## 7h. Phase 09 controls as built (details: ADR-0010)
+
+Phase 09 turns the studio into a self-hosted web application, so the "drive-by local API abuse" and
+"other local users" rows of §2 are now covered by these controls instead of the per-launch token:
+
+- **Authentication:** one owner account per studio. Passwords are scrypt hashes (n=2^17, r=8, p=1), at
+  least 12 characters. First account only with the one-time setup code from `runtime/setup-code.txt`
+  (mode 0600, never logged) or the server command line. Unknown usernames cost the same time as wrong
+  passwords. 5 failed sign-ins in 15 minutes per address or username means a wait (HTTP 429).
+- **Sessions:** 256-bit random token in an `HttpOnly`, `SameSite=Strict`, `Path=/` cookie, `Secure` with
+  the `__Host-` prefix on https. Only SHA-256 hashes are stored. Idle 12 h and absolute 14 days
+  (configurable). Password change ends other sessions; server reset ends all.
+- **Authorization:** deny by default. The guard rejects every `/api` request without a session except
+  `auth/state`, `auth/login` and `auth/setup`; a test calls all 219 API operations unauthenticated.
+- **CSRF:** per-session token in `X-PBS-CSRF` on every POST/PUT/PATCH/DELETE (tested on every such
+  route), plus Origin, `Sec-Fetch-Site` and SameSite checks. No CORS headers.
+- **Headers:** CSP (`default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'`…),
+  `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, COOP/CORP, Permissions-Policy,
+  HSTS on https. Exported HTML keeps its own sandbox CSP.
+- **Requests and files:** bodies over the upload limit are refused before they are read (Content-Length
+  and streamed). File endpoints still take IDs, never paths; the UI files are served through
+  `safe_join` from the build folder only; uploads are typed by content (tests for both).
+- **Credentials on a server:** AES-256-GCM in `runtime/secrets.enc.json`; master key from a Docker
+  secret outside the data volume; wrong key fails closed; no keyring fallback on a server.
+- **Network:** only the proxy publishes a port, bound to 127.0.0.1 unless the operator chooses an
+  address (Docker-published ports bypass `ufw`). Core, worker and Ollama are on Docker networks; Ollama's
+  is internal (no internet). Core and the worker run as a non-root user with a read-only root
+  filesystem; every container drops all capabilities (the proxy keeps only `NET_BIND_SERVICE`) and sets
+  `no-new-privileges`. Core trusts `X-Forwarded-*` only from the proxy address.
+- **Local-only mode** is unchanged and still fails closed; operator-named private model hosts
+  (`PBS_LOCAL_AI_HOSTS`) are the only additions to "local".
+
+## 7i. Phase 10 controls as built (details: ADR-0011)
+
+- **Reverse proxy:** Nginx Proxy Manager terminates TLS. The studio publishes no host port by default.
+  NPM reaches it over the shared network `npm_proxy` as `book-studio-app:8765`. Core trusts
+  `X-Forwarded-*` only from that network's subnet; `validate.sh` fails if the subnet changes.
+- **Other containers on `npm_proxy`** can reach Core's HTTP port, as NPM does. Every request still
+  needs the Host, Origin, session and CSRF checks of §7h. Do not put untrusted services on that network.
+- **Operator controls:**
+  - `PBS_ALLOW_CLOUD=false` forces local-only at the egress gate, whatever the in-app setting;
+  - `PBS_LOCAL_AI_HOSTS` is the only list of hosts treated as local (plain names or IPv4 addresses,
+    set in the environment, never from the browser);
+  - remote Ollama traffic is unencrypted HTTP, so use it only on a trusted LAN or over a VPN.
+- **Files on the server:**
+  - data folder owned by uid 10001, mode 700;
+  - master key outside it, owner 10001, mode 400;
+  - backups folder and `deploy/.env` root-only (600 and 700);
+  - `validate.sh` checks the data folder and key modes.
+- **Backups:** verified before they are kept or restored. Verification rejects absolute paths, `..`,
+  links and device files and checks database integrity. Archives hold the encrypted key file but never
+  the master key.
+- **NPM's own admin:** keep port 81 on 127.0.0.1 (SSH tunnel). NPM logs an `INITIAL_ADMIN_PASSWORD` in
+  plain text, so remove it after first start and change the password.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

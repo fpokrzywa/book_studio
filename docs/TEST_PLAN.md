@@ -173,6 +173,30 @@ Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `
 | Export with chapter metadata and notes | `test_narration_with_test_engine_exports_aligned_audio` (ZIP: WAV per chapter, `chapters.json` offsets and block IDs, `.cue`, `NOTES.txt` with AI-voice and "not checked against ACX"); stale audio after a new revision |
 | Recordings: rights, audio check, immutable transcript, speaker correction, quotation → source | `test_recording_rights_transcript_speakers_and_quote_as_source` |
 
+### 4.4f Web deployment and hardening (Phase 09, as built)
+
+| Test | What it proves |
+|---|---|
+| `test_web.py::test_every_api_route_requires_sign_in` | All 219 documented API operations answer 401 without a session (except the three sign-in endpoints) |
+| `test_web.py::test_every_state_changing_route_requires_the_session_csrf_token` | Every POST/PUT/PATCH/DELETE refuses a missing or wrong `X-PBS-CSRF` |
+| `test_web.py` setup, sign-in, throttle, cookie, logout, password change, CLI reset, idle and absolute expiry | Account and session rules; nothing secret in the database or logs |
+| `test_web.py` headers, oversized and streamed bodies, server settings, `__Host-` cookie and HSTS in server mode | Request guard and deployment configuration |
+| `test_web.py` built-UI serving, file endpoint traversal probes, content-typed uploads | No file outside the build or workspace is reachable |
+| `test_web.py` encrypted key store, no keyring on a server, private model hosts | Secrets at rest; egress unchanged except operator-named hosts |
+| `test_web.py` durable build task, crash recovery, failed task, one worker per workspace | Background tasks |
+| `test_process_restart.py` (real processes) | Content and the browser session survive a hard kill; signed-out stays signed out; a separate `web` and `worker` process: the web process only queues, the worker runs the AI job and the EPUB task, a second worker refuses to start |
+| `Auth.test.tsx` (Vitest + axe) | Gate shows only sign-in or setup until signed in; CSRF header only on writes; session-ended returns to sign-in; task polling |
+| `e2e/web.spec.ts` (Playwright + axe) | Real browser: setup with the code, writes, Core restart keeps the session, sign out and in, forged write refused |
+| Docker smoke (manual, recorded in BUILD_STATE) | Built image and Compose stack over HTTPS: headers, sign-in, CSRF, worker build, encrypted keys, restart persistence, Core not reachable directly |
+
+### 4.4g Ubuntu deployment and operations (Phase 10, as built)
+
+| Test | What it proves |
+|---|---|
+| `test_ops.py` (11 tests) | `status`, `check`, `migrate`; backup archives accepted only when safe and sound (path tricks, links, missing or corrupt database rejected; WAL contents read); `PBS_ALLOW_CLOUD=false` wins over the stored setting and blocks cloud tests; remote Ollama only on operator-named LAN addresses |
+| `deploy/scripts/*.sh` | Run on Ubuntu 24.04.5 with Docker Engine 29.10.0: install, validate (also through NPM), backup, restore, update, rollback |
+| `deploy/validation/run_e2e.sh` | On that system, behind Nginx Proxy Manager 2.17.1 over HTTPS: 22 workflow checks, then identical chapters, revision hashes, assets and exports after a restart, after recreating every container, and after a restore that removes a later change |
+
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
 - Planning: unsupported market metrics are never produced (assert the schema has no such fields unless a licensed source is configured). An outline change preserves prose.

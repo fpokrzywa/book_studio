@@ -46,23 +46,26 @@ export function HelpPage() {
             deleted, and you can unarchive it at any time. <strong>Duplicate</strong> copies the current text
             of every chapter into a new book; the copy starts its own history.
           </p>
+          <h2>Signing in</h2>
+          <p>
+            The studio runs as a website on your own computer or server, and you open it in any modern
+            browser. Every page needs you to be signed in. Sessions end after a period without use, and always
+            after two weeks; <strong>Account</strong> lets you change the password and sign out other
+            browsers.
+          </p>
           <h2>Privacy</h2>
           <p>
-            This version runs in <strong>local-only</strong> mode. Nothing you write is sent over the network:
-            the studio talks only to its own service on this computer (127.0.0.1). AI features, which can use
-            local or cloud models, arrive in Phase 03. Cloud use will always need your explicit permission.
-          </p>
-          <h2>Not available yet</h2>
-          <p>
-            Research, Knowledge, Publishing and AI settings appear in the menu as &ldquo;Not yet
-            implemented&rdquo;. Each is built in a later phase. EPUB, DOCX and print PDF exports arrive in
-            Phase 07; scanned PDFs (which need text recognition) and Word equations cannot be imported yet.
+            The studio starts in <strong>local-only</strong> mode: nothing you write leaves the studio&apos;s
+            own machine, and AI can use only models running there (or on a private model server that whoever
+            runs the studio has named). Cloud AI needs you to allow it in AI settings and, for each book, your
+            consent for that provider.
           </p>
           <h2>If something goes wrong</h2>
           <p>
-            If pages say Core can&apos;t be reached, the background service has stopped. Start the app again
-            with the command in the README. Your saved work is stored in the workspace folder shown here, not
-            in the browser.
+            If pages say Core can&apos;t be reached, the studio&apos;s service has stopped; whoever runs it
+            can start it again (README: Starting the app, or docs/DEPLOYMENT.md on a server). If AI jobs,
+            builds or exports stay queued, the background worker is not running. Your saved work is stored in
+            the studio&apos;s data folder, not in the browser.
           </p>
         </article>
 

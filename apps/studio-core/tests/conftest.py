@@ -5,6 +5,7 @@ from __future__ import annotations
 import ipaddress
 import socket
 from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
 PORT = 8765
 BASE_URL = f"http://127.0.0.1:{PORT}"
 UI_ORIGIN = "http://127.0.0.1:5173"
+OWNER = "author"
+PASSWORD = "correct horse battery 42"  # test-only account password, never a real credential  # noqa: S105
 
 
 def _is_loopback(address: Any) -> bool:
@@ -77,6 +80,42 @@ def make_settings(workspace: Path, **overrides: Any) -> Settings:
     return Settings(**values)
 
 
+@pytest.fixture(autouse=True)
+def fast_password_hashing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """scrypt at n=2**10 in tests (production uses 2**17); stored hashes carry their own cost."""
+    from pbs_core.security import passwords
+
+    monkeypatch.setattr(passwords, "LOG2_N", 10)
+
+
+def sign_in(c: TestClient, ctx: AppContext) -> TestClient:
+    """Create the studio account on first use (with the setup code), else sign in; set the CSRF header."""
+    from pbs_core.services import auth
+
+    if auth.account_count(ctx) == 0:
+        auth.ensure_setup_code(ctx)
+        code = (ctx.workspace.runtime_dir / auth.SETUP_CODE_FILE).read_text(encoding="ascii")
+        resp = c.post(
+            "/api/auth/setup",
+            json={"username": OWNER, "password": PASSWORD, "setup_code": code},
+            headers={"X-PBS-CSRF": "1"},
+        )
+    else:
+        resp = c.post("/api/auth/login", json={"username": OWNER, "password": PASSWORD}, headers={"X-PBS-CSRF": "1"})
+    assert resp.status_code == 200, resp.text
+    c.headers["X-PBS-CSRF"] = resp.json()["csrf_token"]
+    return c
+
+
+@contextmanager
+def signed_client(ctx: AppContext, settings: Settings | None = None, **kwargs: Any) -> Iterator[TestClient]:
+    """Enter the client first, then sign in: requests made outside the TestClient context each start a
+    new event loop (and, on Windows, a socket pair), which exhausts socket buffers over a full run."""
+    settings = settings or ctx.settings
+    with TestClient(create_app(settings, ctx=ctx), base_url=BASE_URL, **kwargs) as c:
+        yield sign_in(c, ctx)
+
+
 @pytest.fixture
 def workspace(tmp_path: Path) -> Path:
     return tmp_path / "ws"
@@ -91,8 +130,7 @@ def ctx(workspace: Path) -> Iterator[AppContext]:
 
 @pytest.fixture
 def client(workspace: Path, ctx: AppContext) -> Iterator[TestClient]:
-    app = create_app(make_settings(workspace), ctx=ctx)
-    with TestClient(app, base_url=BASE_URL, headers={"X-PBS-Token": ctx.token}) as c:
+    with signed_client(ctx, make_settings(workspace)) as c:
         yield c
 
 

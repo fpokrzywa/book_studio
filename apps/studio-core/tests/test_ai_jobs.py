@@ -17,7 +17,7 @@ from pbs_core.jobs.runner import JobRunner
 from pbs_core.providers.egress import external_requests
 from pbs_core.storage.ai_models import Job, Proposal, UsageRecord
 from pbs_core.storage.models import ChapterRevision
-from tests.conftest import make_settings, new_chapter, new_project, save
+from tests.conftest import make_settings, new_chapter, new_project, save, signed_client
 
 OPENING = "The engine room was quiet.\n"
 
@@ -285,10 +285,8 @@ def test_structured_brainstorm_is_validated(client: TestClient, runner: JobRunne
 
 def test_restart_recovers_running_jobs_without_double_commit(workspace: Any) -> None:
     ctx = build_context(make_settings(workspace))
-    from pbs_core.api.app import create_app
 
-    app = create_app(make_settings(workspace), ctx=ctx)
-    with TestClient(app, base_url="http://127.0.0.1:8765", headers={"X-PBS-Token": ctx.token}) as client:
+    with signed_client(ctx, make_settings(workspace)) as client:
         prov = mock_provider(client)
         pid, cid = book(client)
         j = ask(client, pid, cid, prov["id"]).json()

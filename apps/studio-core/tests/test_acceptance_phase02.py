@@ -12,12 +12,9 @@ import itertools
 import zipfile
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
-from pbs_core.api.app import create_app
 from pbs_core.context import build_context
 from pbs_core.document import bookmd, serialize
-from tests.conftest import BASE_URL, make_settings
+from tests.conftest import make_settings, signed_client
 from tests.test_backup import snapshot
 
 FIX = Path(__file__).resolve().parents[3] / "fixtures"
@@ -25,9 +22,7 @@ FIX = Path(__file__).resolve().parents[3] / "fixtures"
 
 def _client(workspace: Path):
     ctx = build_context(make_settings(workspace))
-    return ctx, TestClient(
-        create_app(make_settings(workspace), ctx=ctx), base_url=BASE_URL, headers={"X-PBS-Token": ctx.token}
-    )
+    return ctx
 
 
 def _ids():
@@ -46,8 +41,8 @@ def _structures(text: str) -> dict[str, int]:
 
 
 def test_phase02_acceptance(workspace: Path) -> None:
-    ctx, c = _client(workspace)
-    with c:
+    ctx = _client(workspace)
+    with signed_client(ctx, make_settings(workspace)) as c:
         # 1. Import
         imp = c.post(
             "/api/imports", files={"file": ("quiet-engine.html", (FIX / "import/multi-chapter.html").read_bytes())}
@@ -72,8 +67,8 @@ def test_phase02_acceptance(workspace: Path) -> None:
     ctx.close()
 
     # 3. Restart: a new Core context on the same workspace
-    ctx, c = _client(workspace)
-    with c:
+    ctx = _client(workspace)
+    with signed_client(ctx, make_settings(workspace)) as c:
         after = {
             cid: c.get(f"/api/projects/{pid}/chapters/{cid}/content").json()["source_md"] for cid in (ch1, ch2, ch3)
         }

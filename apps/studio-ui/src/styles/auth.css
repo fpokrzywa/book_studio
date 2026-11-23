@@ -1,0 +1,50 @@
+/* Sign-in, first-run setup and the background worker notice (Phase 09). */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6) var(--space-4);
+  background: var(--endpaper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
+
+.auth-card {
+  width: min(100%, 30rem);
+  background: var(--leaf);
+  border: 1px solid var(--rule);
+  border-top: 6px solid var(--cloth);
+  border-radius: var(--radius-m);
+  padding: var(--space-6) var(--space-5);
+}
+
+.auth-card form,
+.auth-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-family: var(--font-text);
+  font-size: var(--step-3);
+}
+
+.auth-card .btn,
+.auth-form .btn {
+  justify-self: start;
+}
+
+.auth-brand {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-text);
+  color: var(--ink-soft);
+}
+
+.worker-warning {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--rule);
+  background: var(--gilt-wash);
+  color: var(--ink);
+}

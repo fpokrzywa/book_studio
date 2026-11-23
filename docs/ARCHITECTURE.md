@@ -4,7 +4,14 @@ Status: Draft v0.1 (Phase 00). Companion docs: `DATA_MODEL.md` (entities and sch
 
 ## 1. Shape of the system
 
-PBS is a **local two-process application**:
+> **Phase 09 update:** PBS is now a **self-hosted web application** (ADR-0010). The browser UI is
+> served by Core itself; on a server, Core runs as two processes from one image (`web` and `worker`)
+> behind an HTTPS reverse proxy (Nginx Proxy Manager from Phase 10, ADR-0011), every `/api` request needs a signed-in session, and the desktop (Tauri)
+> plan is retired. Section 1.2 shows the deployed shape. The text and diagram below describe the
+> original local design (Phases 00 to 08), which still applies to `PBS_DEPLOYMENT=local` (development),
+> except that the per-launch token has been replaced by sign-in.
+
+PBS was designed as a **local two-process application**:
 
 1. **Studio UI**: React + TypeScript SPA. In development, Vite serves it in the user's browser. From Phase 10 it runs inside a Tauri 2 webview.
 2. **Studio Core**: a Python FastAPI service bound to **127.0.0.1 only**. It owns the database, files, jobs, AI provider calls, import/export and validation. The UI is a thin client and never touches files directly.
@@ -70,6 +77,49 @@ sequenceDiagram
   C->>D: TX: INSERT revision N+1 (origin=ai_generated|ai_assisted), mark proposal accepted
   Note over C,D: Base mismatch → 409, user rebases; locked/approved blocks never replaced
 ```
+
+### 1.2 Deployed shape (Phase 09)
+
+```mermaid
+flowchart LR
+  B["Browser"] -- "HTTPS<br/>session cookie + X-PBS-CSRF" --> P["Nginx Proxy Manager<br/>TLS, the only published ports"]
+  P --> A["app: Core, PBS_ROLE=web<br/>guard · API · built UI"]
+  A <--> V[("/data volume<br/>studio.db · projects/ · runtime/")]
+  W["worker: Core, PBS_ROLE=worker<br/>AI jobs · background tasks"] <--> V
+  W --> O["ollama (optional,<br/>internal network only)"]
+  W -- "egress gate; only when cloud is allowed" --> C["Cloud AI"]
+```
+
+* **Request guard** (`security/guard.py`, ASGI): Host and Origin checks, deny-by-default session check
+  for `/api`, CSRF token on every state-changing request, body-size limit, security headers.
+* **Accounts and sessions** (`services/auth.py`, tables `user_account`, `auth_session`): one owner
+  account, scrypt hashes, hashed session tokens, idle and absolute expiry, sign-in throttling.
+* **Background tasks** (`services/tasks.py`, table `background_task`): publishing builds, covers,
+  packages and audio export run in the worker; the UI polls `GET /api/tasks/{id}`.
+* **Worker** (`python -m pbs_core worker`): the existing durable job runner plus tasks, guarded by an
+  exclusive OS file lock and reporting a heartbeat the web process shows in the UI.
+* **Secrets on a server**: AES-256-GCM encrypted file in `runtime/`, master key from a Docker secret.
+* **Private model hosts**: `PBS_LOCAL_AI_HOSTS` names hosts (e.g. `ollama`) the egress gate treats as local.
+
+### 1.3 Production on Ubuntu (Phase 10, ADR-0011)
+
+```
+ Browser ──HTTPS──▶ Nginx Proxy Manager ──http, Docker network npm_proxy──▶ app (book-studio-app:8765)
+                                                                             │
+   /srv/book-studio/data  ◀── bind mount ──  app, worker  ── backend (internal) ──▶ ollama (optional)
+   /srv/book-studio/secrets/pbs_master_key   (Docker secret)       worker ── egress ──▶ cloud AI / remote Ollama
+   /srv/book-studio/backups                  (verified tar.gz backups, root-only)
+```
+
+* **Services:** `app`, `worker` and an optional `ollama`. No separate frontend server, database, Redis
+  or broker: Core serves the UI, and SQLite holds the data and the durable job queue.
+* **Storage:** host folders, so no Docker command removes data and containers can be recreated freely.
+* **Operations:** `deploy/scripts/` (install, update, backup, restore, rollback, validate, status,
+  diagnose) on top of Core commands `migrate`, `status`, `check` and `verify-backup`.
+* **Validation:** `deploy/validation/run_e2e.sh` exercises a running deployment over HTTPS.
+* **AI:** Ollama in Docker, on the host (`host.docker.internal`) or on another computer named in
+  `PBS_LOCAL_AI_HOSTS`; cloud providers only when the author allows them and `PBS_ALLOW_CLOUD` is not
+  `false`.
 
 ## 2. Module layout (planned repository structure)
 
@@ -280,7 +330,11 @@ Section and review jobs run on the same job runner through `jobs/writing_exec.py
 - Logging: `structlog` JSON to `logs/core.jsonl` (rotated at midnight, 14 kept). Uvicorn and other stdlib logs go through the same redacting formatter. A redaction processor scrubs known secret patterns (`sk-…`, `Bearer …`, `x-api-key`, `AIza…`, `gsk_…`) and any value whose key matches `/key|token|secret|password|authorization/i`. Manuscript text is **not logged** by default (only IDs, lengths and hashes).
 - The Activity log (user-facing) is a separate `activity_event` table holding human-readable, non-secret events.
 
-## 10. Desktop packaging (Phase 10 preview)
+## 10. Desktop packaging (retired in Phase 09)
+
+Retired by ADR-0010: the studio is a self-hosted web application, so no desktop shell is planned. The
+original preview is kept below for the record; it was never built. Deployment is described in
+`docs/DEPLOYMENT.md`.
 
 The Tauri 2 shell starts Core as a sidecar binary (PyInstaller onedir, per-OS/arch), passing the workspace path, a random port and the session token through environment variables and stdin, not argv. The shell owns single-instance handling and shutdown. Constraints are tracked in ADR-0001 §6 and the risk register (notarization of every bundled dylib on macOS, PyInstaller antivirus false positives on Windows, the Pango/GTK runtime for WeasyPrint, a Java runtime for EPUBCheck).
 

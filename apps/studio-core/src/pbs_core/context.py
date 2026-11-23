@@ -1,4 +1,4 @@
-"""Application context: settings, workspace, database, IDs, clock and session token."""
+"""Application context: settings, workspace, database, IDs, clock and secret store."""
 
 from __future__ import annotations
 
@@ -13,8 +13,9 @@ from pbs_core.config import Settings
 from pbs_core.domain.clock import Clock
 from pbs_core.domain.ids import UlidFactory
 from pbs_core.logging_setup import close_logging, configure_logging
-from pbs_core.security.secrets import SecretStore, build_store
-from pbs_core.security.token import generate_token, write_token
+from pbs_core.providers import egress
+from pbs_core.security.fs import restrict_directory
+from pbs_core.security.secrets import ReadOnlyStore, SecretStore, build_store
 from pbs_core.storage.db import Database, create_sqlite_engine
 from pbs_core.storage.migrate import MigrationResult, migrate
 from pbs_core.storage.models import AppSetting
@@ -35,7 +36,6 @@ class AppContext:
     db: Database
     ids: UlidFactory
     clock: Clock
-    token: str
     migration: MigrationResult
     secrets: SecretStore = field(default=None)  # type: ignore[assignment]  # set by build_context
     http_transport: Any = None  # tests inject an httpx2.MockTransport; None = real network (gated)
@@ -80,9 +80,25 @@ def build_context(
         for key, value in DEFAULT_SETTINGS.items():
             if s.get(AppSetting, key) is None:
                 s.add(AppSetting(key=key, value_json=json.dumps(value)))
-    token = generate_token()
-    write_token(workspace.runtime_dir, workspace.token_path, token)
-    log.info("core_ready", version=__version__, workspace=str(workspace.root), schema=result.to_revision)
-    store = secrets or build_store(settings.secret_backend, workspace.runtime_dir)
+    if not restrict_directory(workspace.runtime_dir):
+        log.warning("runtime_dir_acl_not_restricted", path=str(workspace.runtime_dir))
+    workspace.legacy_token_path.unlink(missing_ok=True)
+    egress.configure_local_hosts(settings.local_ai_hosts)
+    log.info(
+        "core_ready",
+        version=__version__,
+        workspace=str(workspace.root),
+        schema=result.to_revision,
+        deployment=settings.deployment,
+        role=settings.role,
+    )
+    if (
+        secrets is None
+        and settings.deployment == "server"
+        and settings.secret_backend == "auto"  # noqa: S105 - a backend name
+        and settings.secret_key_file is None
+    ):
+        secrets = ReadOnlyStore()  # no desktop keyring on a headless server: env keys only, said in the UI
+    store = secrets or build_store(settings.secret_backend, workspace.runtime_dir, settings.secret_key_file)
     log.info("secret_store", backend=store.name, secure=store.secure, writable=store.writable)
-    return AppContext(settings, workspace, db, ids or UlidFactory(), clock, token, result, secrets=store)
+    return AppContext(settings, workspace, db, ids or UlidFactory(), clock, result, secrets=store)

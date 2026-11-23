@@ -1,18 +1,30 @@
 # Personal Book Studio
 
-A private, local-first studio for writing books, from idea to a validated publishing package. Single user, no accounts, no cloud sync. Everything you write is stored on your own disk.
+A private, self-hosted studio for writing books, from idea to a validated publishing package. It is a web application: you run it on your own Ubuntu server with Docker Compose (or on your own computer while developing) and open it in any modern browser over HTTPS. One author, one signed-in account, no cloud sync. Everything you write stays on your own server.
 
-**Status: Phase 02.** These work today:
+**Run it on a server:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Ubuntu, Docker Compose, Nginx Proxy Manager), then [docs/OPERATIONS.md](docs/OPERATIONS.md) for backups, updates and monitoring. In short:
 
-- **Library:** create, search, archive and duplicate books.
-- **Manuscript tree:** parts, chapters and sections, reordered with drag-and-drop or buttons.
-- **Editor:** a Markdown editor with live preview. It handles tables, math, citations, footnotes and images with alt text and captions.
-- **Saving:** autosaved drafts, plus immutable revisions you can compare, label and restore.
-- **Import:** Markdown, text, HTML, Word (.docx) and text-based PDF.
-- **Export:** Markdown (zipped with images) and HTML.
-- **Backup:** one-file backup and restore.
+```sh
+sudo git clone https://github.com/fpokrzywa/book_studio.git /opt/book-studio && cd /opt/book-studio
+sudo deploy/scripts/install.sh --domain books.example.com      # then add the NPM proxy host
+sudo deploy/scripts/backup.sh                                     # verified whole-studio backup
+sudo deploy/scripts/update.sh --pull                              # backup, build, migrate, validate
+```
 
-Research, Knowledge, Publishing and AI settings are visibly marked "Not yet implemented". See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/BUILD_STATE.md](docs/BUILD_STATE.md).
+**Release status:** [docs/FINAL_ACCEPTANCE_REPORT.md](docs/FINAL_ACCEPTANCE_REPORT.md) (READY FOR PERSONAL USE, with conditions), with [FEATURE_MATRIX](docs/FEATURE_MATRIX.md), [DEPLOYMENT_VERIFICATION](docs/DEPLOYMENT_VERIFICATION.md), [KNOWN_ISSUES](docs/KNOWN_ISSUES.md) and the author's [USER_GUIDE](docs/USER_GUIDE.md).
+
+**Develop it:** the sections below.
+
+**Status: Phase 11 (final acceptance testing and stabilisation).** These work today:
+
+- **Library, manuscript tree and editor:** books, parts, chapters and sections; a Markdown editor with live preview (tables, math, citations, footnotes, images with alt text and captions).
+- **Saving and history:** autosaved drafts, immutable revisions you can compare, label and restore.
+- **Import and export:** Markdown, text, HTML, Word and text-based PDF in; Markdown, HTML, EPUB, Word and print PDF out, plus covers and a publish package.
+- **AI (optional):** local or cloud models behind an egress gate, durable jobs, suggestions you accept or reject; knowledge sources, evidence and citations; planning and section-by-section writing.
+- **Series, translations, narration and interviews** (Phase 08).
+- **Web deployment:** sign-in, encrypted key storage, a background worker (Phase 09); Ubuntu deployment behind Nginx Proxy Manager with install, update, backup, restore and rollback scripts, validated end to end (Phase 10).
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/BUILD_STATE.md](docs/BUILD_STATE.md) for exactly what is built and tested.
 
 ### Using the studio
 
@@ -34,7 +46,11 @@ Research, Knowledge, Publishing and AI settings are visibly marked "Not yet impl
 | End-to-end tests | `e2e` | Playwright |
 | Design docs | `docs` | PRD, architecture, data model, security, ADRs, test plan, roadmap |
 
-Core listens on **127.0.0.1 only** and refuses requests without the per-launch session token, from a foreign Origin, or with an unexpected Host header. Phase 01 makes **no external network calls**.
+Every `/api` request needs a signed-in session (an HttpOnly cookie) and every change needs the session's anti-forgery header; requests from a foreign Origin or with an unexpected Host header are refused. In development Core listens on **127.0.0.1 only**; on a server only the HTTPS proxy is published (docs/DEPLOYMENT.md). In local-only mode (the default) nothing is sent to the internet.
+
+| Part (Phase 09) | Path |
+|---|---|
+| Server deployment (Phase 10): Dockerfile, Compose file for Nginx Proxy Manager, install, update, backup, restore, rollback and validation scripts | `deploy/` |
 
 ## Prerequisites
 
@@ -79,6 +95,8 @@ sh scripts/dev.sh
 
 Then open **http://127.0.0.1:5173**. Press `Ctrl+C` in the terminal to stop both processes.
 
+**First run:** the studio asks you to create its account. It needs the one-time setup code that Core writes to `.pbs-data/runtime/setup-code.txt` (the start script prints the path). You can also create the account in a terminal: `apps\studio-core\.venv\Scripts\python.exe -m pbs_core create-user author`. Forgot the password: `... -m pbs_core reset-password author`.
+
 By default your data goes to `.pbs-data/` in the repository folder. That folder is git-ignored, so it is never committed. To use another folder, pass `-Workspace D:\Books` (Windows) or set `PBS_WORKSPACE=/path` (macOS).
 
 What the script does, if you prefer to run the two processes yourself:
@@ -90,7 +108,7 @@ apps\studio-core\.venv\Scripts\python.exe -m pbs_core
 ```
 
 ```powershell
-# Terminal 2 - UI (reads the session token from the same workspace)
+# Terminal 2 - UI (proxies /api to Core; your sign-in cookie passes through)
 $env:PBS_WORKSPACE = "$PWD\.pbs-data"
 pnpm --filter studio-ui dev
 ```
@@ -132,17 +150,25 @@ Core reads environment variables prefixed with `PBS_`:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PBS_WORKSPACE` | `./.pbs-data` (dev) | Where the database, exports, logs and runtime token live |
+| `PBS_WORKSPACE` | `./.pbs-data` (dev), `/data` (server) | Where the database, files, logs and runtime files live |
+| `PBS_DEPLOYMENT` | `local` | `local` (loopback only) or `server` (behind the HTTPS proxy; docs/DEPLOYMENT.md) |
+| `PBS_ROLE` | `all` | `all` (web and background worker in one process), `web` or `worker` |
+| `PBS_PUBLIC_ORIGIN` | unset | Server only: the https address browsers use, e.g. `https://books.home.lan` |
+| `PBS_TRUSTED_PROXIES` | `[]` | Server only: the proxy address whose `X-Forwarded-*` headers are trusted |
+| `PBS_UI_DIST` | unset | Folder of the built UI that Core serves itself (the server image sets it) |
+| `PBS_SECRET_KEY_FILE` | unset | Server: 32-byte master key (a Docker secret) for the encrypted key store |
+| `PBS_LOCAL_AI_HOSTS` | `[]` | Private model hosts treated as local, e.g. `["ollama"]` |
+| `PBS_SESSION_IDLE_MINUTES` / `PBS_SESSION_MAX_DAYS` | `720` / `14` | Sign-in session limits |
 | `PBS_ENV` | `dev` | `dev`, `test` or `prod`. In `prod` without `PBS_WORKSPACE`, the default is `Documents/Personal Book Studio` |
-| `PBS_PORT` | `8765` | Core port (always bound to loopback) |
-| `PBS_HOST` | `127.0.0.1` | Only loopback values are accepted; anything else refuses to start |
+| `PBS_PORT` | `8765` | Core port |
+| `PBS_HOST` | `127.0.0.1` | In `local` deployment only loopback values are accepted; anything else refuses to start |
 | `PBS_UI_ORIGINS` | `["http://127.0.0.1:5173","http://localhost:5173"]` | JSON list of allowed UI origins |
 | `PBS_LOG_LEVEL` | `INFO` | Log level. Logs are JSON in `<workspace>/logs/`, with secrets redacted |
-| `PBS_SECRET_BACKEND` | `auto` | Where AI API keys are kept: `auto`/`keyring` (the system credential store), or `dev-file` (development only: a user-only file in `<workspace>/runtime/`, with a warning in the app) |
+| `PBS_SECRET_BACKEND` | `auto` | Where AI API keys are kept: `auto` (encrypted file if `PBS_SECRET_KEY_FILE` is set, else the system credential store; a server never uses a keyring), `encrypted-file`, `keyring`, or `dev-file` (development only: a user-only file in `<workspace>/runtime/`, with a warning in the app) |
 | `PBS_<PROVIDER>_API_KEY` | unset | Read-only key source, e.g. `PBS_OPENAI_API_KEY`. It is used when no key is stored, and the app warns about it |
 | `PBS_AI_WORKERS` | `2` | How many AI jobs run at once (a local Ollama server always runs one at a time) |
 
-The UI dev server reads `PBS_WORKSPACE`, `PBS_CORE_URL` (default `http://127.0.0.1:8765`) and `PBS_UI_PORT` (default `5173`).
+The UI dev server reads `PBS_CORE_URL` (default `http://127.0.0.1:8765`) and `PBS_UI_PORT` (default `5173`).
 
 ## Using AI (Phase 03)
 
@@ -227,7 +253,8 @@ Without these tools, the features still open: the narration script is prepared a
   projects/<id>/exports/<export-id>/<Book Title>.md
   db-backups/          automatic snapshot before every schema upgrade
   logs/core.jsonl      local logs (no manuscript text, secrets redacted)
-  runtime/             per-launch session token (user-only permissions)
+  runtime/             setup code (until the account exists), encrypted key store, worker lock
+                       and heartbeat (user-only permissions; never in backups or exports)
 ```
 
 Also in the workspace: `originals/` (every imported file, byte-for-byte and read-only), `projects/<id>/assets/` (images, named by content hash) and `backups/` (project backups). To back up everything by hand, stop the app and copy the workspace folder. For one book, use **Create backup**.
@@ -240,10 +267,10 @@ Also in the workspace: `originals/` (every imported file, byte-for-byte and read
 | uv error *"failed to hardlink file … incompatible hardlinks (os error 396)"* | Set `UV_LINK_MODE=copy` (the scripts do this). It happens when uv's cache and the repo are on different drives or a cloud-synced folder |
 | `Port 8765 is already in use` / `Port 5173 …` | Another copy is running. Close it, or start with `-CorePort 8766 -UiPort 5174` (Windows) / `PBS_PORT=8766 PBS_UI_PORT=5174` (macOS) |
 | The app says *"Can't reach Personal Book Studio Core"* | Core is not running or crashed. Look at the terminal output, then start `scripts/dev.ps1` again. Your saved work is in the workspace |
-| Every API call returns 401 | The UI proxy reads the token from `<workspace>/runtime/session.token`. Make sure Core and the UI use the **same** `PBS_WORKSPACE` |
+| Every API call returns 401 | You are not signed in, or the session ended (12 hours unused, 14 days at most, or the password changed). Reload the page and sign in |
+| AI jobs, builds or exports stay "queued" | No background worker is running. In development `PBS_ROLE` must be `all` (the default); on a server start the `worker` service |
 | Core refuses to start: *"database … written by a newer version"* | You opened a workspace with an older checkout. Switch back to the newer version. Core never downgrades a database |
 | `powershell … cannot be loaded because running scripts is disabled` | Use the `-ExecutionPolicy Bypass -File …` form shown above |
-| Rust/Tauri builds fail in Git Bash with a strange `link.exe` error | Git's `/usr/bin/link.exe` shadows MSVC's. Build from PowerShell (relevant from Phase 10) |
 | Reset the dev data | Stop the app and delete `.pbs-data/` |
 
 ## Privacy and governance

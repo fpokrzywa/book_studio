@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, call, type Schemas } from "./client";
+import { api, call, runTask, type Schemas } from "./client";
 
 export type Profile = Schemas["ProfileOut"];
 export type ProfileIn = Schemas["ProfileIn"];
@@ -74,15 +74,25 @@ export function usePublishActions(pid: string) {
   return {
     build: useMutation({
       mutationFn: (formats: BuildFormat[]) =>
-        call(api.POST("/api/projects/{project_id}/publishing/build", { ...path(pid), body: { formats } })),
+        runTask<Schemas["BuildOut"]>(
+          call(
+            api.POST("/api/projects/{project_id}/publishing/build-task", { ...path(pid), body: { formats } }),
+          ),
+        ),
       onSuccess: invalidate,
     }),
     covers: useMutation({
-      mutationFn: () => call(api.POST("/api/projects/{project_id}/publishing/covers", path(pid))),
+      mutationFn: () =>
+        runTask<Schemas["BuildOut"]>(
+          call(api.POST("/api/projects/{project_id}/publishing/covers-task", path(pid))),
+        ),
       onSuccess: invalidate,
     }),
     pkg: useMutation({
-      mutationFn: () => call(api.POST("/api/projects/{project_id}/publishing/package", path(pid))),
+      mutationFn: () =>
+        runTask<Schemas["PackageOut"]>(
+          call(api.POST("/api/projects/{project_id}/publishing/package-task", path(pid))),
+        ),
       onSuccess: invalidate,
     }),
   };

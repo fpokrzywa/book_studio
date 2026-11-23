@@ -330,9 +330,11 @@ a {
   font-size: var(--step--1);
   font-weight: 700;
 }
+input:not([type]),
 input[type="text"],
 input[type="search"],
 input[type="number"],
+input[type="password"],
 select,
 textarea {
   font: inherit;

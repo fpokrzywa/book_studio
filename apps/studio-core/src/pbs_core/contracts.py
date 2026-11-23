@@ -301,6 +301,9 @@ class SystemInfoOut(BaseModel):
     workspace_path: str
     privacy_mode: Literal["local_only", "cloud_allowed"]
     env: Literal["dev", "test", "prod"]
+    deployment: Literal["local", "server"] = "local"
+    worker_running: bool = Field(True, description="A background worker reported in within the last minute")
+    worker_last_seen_at: str | None = None
 
 
 class CapabilityOut(BaseModel):

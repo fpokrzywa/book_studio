@@ -8,9 +8,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from pbs_core.api.app import create_app
 from pbs_core.context import AppContext, build_context
-from tests.conftest import BASE_URL, make_settings, new_chapter, new_project, save
+from tests.conftest import make_settings, new_chapter, new_project, save, signed_client
 
 FIX = Path(__file__).resolve().parents[3] / "fixtures"
 
@@ -180,7 +179,7 @@ def test_upload_size_limit(workspace: Path) -> None:
     settings = make_settings(workspace, max_upload_mb=1)
     ctx = build_context(settings)
     try:
-        with TestClient(create_app(settings, ctx=ctx), base_url=BASE_URL, headers={"X-PBS-Token": ctx.token}) as c:
+        with signed_client(ctx, settings) as c:
             resp = c.post("/api/imports", files={"file": ("big.txt", b"a" * (1024 * 1024 + 10))})
             assert resp.status_code == 413 and resp.json()["code"] == "payload_too_large"
             p = new_project(c)

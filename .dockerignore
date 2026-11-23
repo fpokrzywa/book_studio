@@ -1,0 +1,25 @@
+# Never send user data, secrets or build output into an image (the repository is public).
+**/.pbs-data
+**/.env
+**/.env.*
+deploy/secrets
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/dist
+**/test-results
+**/playwright-report
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+**/.hypothesis
+**/.import_linter_cache
+.git
+.remember
+.claude
+fixtures
+e2e
+docs
