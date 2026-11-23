@@ -50,6 +50,8 @@ A phase is **done** only when all of these hold:
 - G2.6 Backup ZIP (manifest/1, checksums) → restore as a new project yields a structurally equivalent project. Golden step 14 passes.
 - G2.7 **Spikes (throwaway code under `spikes/`, results in ADR-0003):** WeasyPrint on this Windows machine, `kitchen-sink.md` → PDF with fonts embedded; ziamath math → SVG; Pandoc DOCX from the BDM→Pandoc AST writer. Each records pass/fail and the chosen fallback.
 
+**Phase 02 status (2026-11-22):** G2.1–G2.6 met (evidence in BUILD_STATE). G2.7 spikes done, with the results in ADR-0003. WeasyPrint failed on Windows, Typst and ziamath passed, and Pandoc was not tested because it is not installed.
+
 ### Phase 03: AI and jobs (MVP)
 - G3.1 Adapters: mock, Ollama, OpenAI, Anthropic, Gemini, Groq. Each has recorded-fixture contract tests. Live tests are opt-in.
 - G3.2 Keyring storage. Canary-key artifact scan passes. Env-var fallback shows a warning.

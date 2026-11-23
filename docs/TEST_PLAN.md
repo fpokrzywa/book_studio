@@ -41,6 +41,8 @@ Status: Draft v0.1 (Phase 00). Principle: **report real results only.** A test t
 | `mock-ai/*.json` | Deterministic outputs for outline, draft, revise, review | Jobs, scenario |
 | `db/rev_<id>.db` | Synthetic DB at each released schema head | Migration |
 
+**As built (Phase 02):** `fixtures/generate.py` writes the binary and HTML fixtures deterministically. They are synthetic, created for this project. The set: `bookmd/kitchen-sink.md`, `import/multi-chapter.{html,md}`, `import/sample.docx` (with an injected Word equation), `import/{text,scanned,encrypted}.pdf`, `malicious/{legacy.doc, zipbomb.docx, traversal.docx, xxe.docx, injection.html}`, `images/engine.png`. Regenerate them with the Core venv: `apps/studio-core/.venv/Scripts/python.exe fixtures/generate.py`.
+
 ## 4. Key test cases by area
 
 ### 4.1 Persistence and isolation (Phase 01)
@@ -75,6 +77,101 @@ Status: Draft v0.1 (Phase 00). Principle: **report real results only.** A test t
 - T-J5 Locked/approved chapter → proposal creation is blocked.
 - T-J6 **Local-only zero egress**: the full scenario runs under the socket guard with zero non-loopback attempts. Selecting a cloud provider in local-only → `EgressBlocked`, no fallback.
 - T-J7 Cost: no price row → cost `null` and the UI shows "unknown". Estimates are flagged `is_estimate`.
+
+**As built (Phase 03):**
+
+| Case | Tests |
+|---|---|
+| T-J1 | `test_process_restart.py::test_ai_job_survives_hard_kill_without_double_apply`, `test_ai_jobs.py::test_restart_recovers_running_jobs_without_double_commit`, Playwright `ai.spec.ts` (crash mid-stream) |
+| T-J2 | `test_cancel_while_streaming_applies_nothing`, Playwright |
+| T-J3 | `test_rate_limit_is_retried_with_backoff`, `test_auth_error_fails_without_retry_then_manual_retry` |
+| T-J4 | `test_replace_selection_goes_stale_when_passage_changes`. The "rebase" is to ask again |
+| T-J5 | `test_approved_chapter_blocks_requests_and_accepts` |
+| T-J6 | `test_local_only_mode_makes_zero_external_calls`, golden step 15, and the session socket guard |
+| T-J7 | `test_cloud_needs_confirmation_and_project_consent` (unknown, then priced) |
+
+Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `httpx2.MockTransport`. The Ollama smoke test (`-m ollama`) runs only when Ollama answers. Cloud checks: `python -m pbs_core.live_check`.
+
+### 4.4a Knowledge and evidence (Phase 04, as built)
+
+| Area | Tests |
+|---|---|
+| Provenance, anchors, originals | `test_knowledge.py::test_import_preserves_original_and_records_anchored_chunks`, `test_pdf_passages_carry_page_numbers` |
+| Search with highlights and reasons; inert FTS syntax | `test_search_highlights_exact_passage_with_reasons` |
+| Deduplication (same file, same text, override) | `test_deduplication_by_file_and_by_text` |
+| Remove, re-index, failed source | `test_remove_and_reindex`, `test_unreadable_source_is_recorded_as_failed` |
+| Book scope and shared opt-in | `test_books_only_see_their_own_and_opted_in_sources` |
+| Supporting sources or "unverified" per paragraph; ledger lifecycle; citation export | `test_generated_paragraphs_show_sources_or_unverified`, `test_rejecting_discards_proposed_claims` |
+| Fabricated citation dropped | `test_fabricated_citation_is_dropped_and_flagged` |
+| Disabled source not used (even if queued before) | `test_disabling_a_source_keeps_it_out_of_new_generations` |
+| Prompt injection | `test_malicious_source_text_stays_data`, `test_forged_envelope_in_plain_text_source_is_neutralised` |
+| Voice: rights, analysis, editable guide, preview-only rewrite | `test_voice_interview_backup.py` |
+| Interview: exact, versioned, immutable; no invented experience | `test_voice_interview_backup.py` |
+| Backup/restore of citations, sources, claims, answers | `test_backup_restore_keeps_citations_sources_claims_and_answers` |
+| UI | `Knowledge.test.tsx` and `Ai.test.tsx` (paragraph sources) in Vitest; `e2e/knowledge.spec.ts` in Playwright |
+
+### 4.4b Planning (Phase 05, as built)
+
+| Area | Tests |
+|---|---|
+| Idea → brief → AI outline (deterministic test model) → approve → skeleton | `test_planning.py::test_idea_to_approved_outline_with_test_model`, golden step 05, Playwright `planning.spec.ts` |
+| Changed outline keeps prose, history and locks | `test_changed_outline_keeps_prose_history_and_locks`, Playwright |
+| AI never overwrites the draft; locked entries kept | `test_ai_regeneration_never_overwrites_draft_and_keeps_locked` |
+| No fabricated market metrics | `test_ai_brainstorm_cannot_carry_market_metrics` (incl. DB CHECK), `test_author_findings_separate_measured_from_heuristic`, `test_ai_finding_cannot_become_measured`, `test_open_library_results_keep_bibliographic_data_only` |
+| Research provider fail-safe (off, blocked, down) | `test_research_provider_off_blocked_or_down_fails_explicitly`, Playwright |
+| Modes, locks, limits, budget cap (before and during a run) | `test_entire_book_honours_prose_locks_and_review`, `test_chapter_limit_blocks_large_runs`, `test_budget_cap_blocks_and_stops_runs`, `test_bulk_generation_requires_an_approved_applied_outline` |
+| Backup of planning data | `test_backup_restore_keeps_brief_findings_outlines_and_links` |
+| UI | Vitest `lib/outline.test.ts` (merge, split, nest, locks) and `Plan.test.tsx`; Playwright `planning.spec.ts` |
+
+### 4.4c Writing pipeline and reviews (Phase 06, as built)
+
+| Area | Tests |
+|---|---|
+| Three-chapter book by section; pause, resume; job history | `test_writing.py::test_three_chapter_book_by_section_with_pause_resume_and_history`; Playwright `writing.spec.ts` (with the review gate) |
+| Retry a failed section alone | `test_failed_section_is_retried_alone` |
+| Review gate with author edits | `test_review_gate_lets_the_author_edit_each_section`; Vitest `Write.test.tsx` |
+| Token budget and the context report | `test_token_budget_trims_context_and_reports_it` |
+| Locked and approved material never superseded | `test_locked_and_approved_chapters_are_never_superseded`; Playwright |
+| Editor actions, protected code and math, diff | `test_editor_actions_keep_code_and_math_and_show_a_diff`; Playwright |
+| Unsupported facts marked and reviewed (decisions persist) | `test_unsupported_facts_are_marked_and_reviewed`; Playwright; Vitest |
+| Repeated paragraph and phrase findings | `test_repeated_paragraph_check_finds_a_real_duplicate`; Playwright |
+| Links, alt text, terms, acronyms, exclusions, gated code checks | `test_links_alt_terms_acronyms_exclusions_and_gated_code_checks` |
+| Fiction continuity: memory, conflicts, chronology, threads | `test_fiction_continuity_memory_and_checks` |
+| AI review keeps only quoted findings | `test_ai_review_keeps_only_findings_quoted_from_the_chapter` |
+| Originality scope statement and overlaps | `test_originality_report_states_its_scope` |
+| Backup of notes, summaries and decisions | `test_backup_keeps_continuity_summaries_and_finding_decisions` |
+
+### 4.4d Publishing (Phase 07, as built)
+
+| Area | Tests |
+|---|---|
+| Fixture (3 chapters, tables, image, math, code, citations) to all five formats, inspected programmatically | `test_publishing.py::test_fixture_exports_to_all_five_formats_and_each_is_inspected` (pypdf: page size, count, fonts, language, text; zipfile/lxml: EPUB container, metadata, nav, MathML, alt text, cross-file links; python-docx: headings, styles, tables, alt text, hyperlinks; HTML and Markdown), determinism, reports saved beside each file |
+| Print cover recalculates from the final page count | `test_print_cover_recalculates_when_the_final_page_count_changes`; Playwright `publishing.spec.ts` |
+| EPUB validation never faked | `test_epub_validation_is_unavailable_never_passed_without_epubcheck` (unavailable without EPUBCheck; a failing validator fails) |
+| Publish package | `test_publish_package_has_everything_and_publishes_nothing`; golden steps 11–13; Playwright (opens the preflight report) |
+| No invented legal text or ISBN | `test_front_matter_never_invents_legal_text_or_isbn` |
+| Metadata handoff checks | `test_metadata_handoff_checks` |
+| Previews say whether they match the export | `test_previews_say_whether_they_match_the_export`; Vitest `Publish.test.tsx` |
+| Unsupported math reported, not dropped | `test_unsupported_math_is_printed_as_source_and_reported` |
+| Cover artwork rights and resolution | `test_cover_artwork_needs_rights_and_its_resolution_is_checked` |
+| KDP rule arithmetic, LaTeX → Typst | `test_kdp_cover_and_margin_rules`, `test_latex_to_typst_conversion` |
+
+### 4.4e Advanced features (Phase 08, as built)
+
+| Area | Tests |
+|---|---|
+| Two books in a series, canon modified, a planted contradiction found, the author's resolution kept on re-run, "update canon" makes the finding go away | `test_advanced.py::test_series_canon_contradiction_and_resolution_survive_rerun`; Playwright `advanced.spec.ts` (UI: create series, add books, edit canon, run the check, open the passage, resolve, re-run) |
+| Relationship rule; suggestions never used as canon | `test_relationship_check_and_suggestions_are_not_canon`; Vitest `Series.test.tsx` |
+| Series canon reaches writing prompts | `test_series_canon_reaches_writing_prompts` |
+| Pen name and voice rules shown per book and used in prompts | `test_pen_name_voice_rules_shown_per_project_and_used_in_prompts` |
+| Translate one chapter without editing the source; protected content kept; language links both ways; chapter identity kept | `test_translate_one_chapter_without_touching_source`; Playwright |
+| Approval rule; lost placeholders rejected; edition rules | `test_translation_requires_an_approved_revision_and_rejects_lost_placeholders` |
+| Narration parts: limit, alignment, unreadable content announced | `test_narration_chunks_keep_alignment_and_announce_unreadable_content` |
+| Graceful degradation with no engines | `test_narration_degrades_gracefully_without_an_engine`, `test_transcription_degrades_gracefully_without_whisper`; Playwright |
+| No cloud calls in local-only mode | `test_local_only_mode_blocks_cloud_speech_and_transcription` (no request reaches the mock transport; the egress counter is unchanged) |
+| Cloud path when allowed (recorded wire format) | `test_cloud_speech_and_transcription_when_allowed` (consent needed; WAV response; cost from the entered price; whisper-1 `verbose_json` segments; the key never stored in the database) |
+| Export with chapter metadata and notes | `test_narration_with_test_engine_exports_aligned_audio` (ZIP: WAV per chapter, `chapters.json` offsets and block IDs, `.cue`, `NOTES.txt` with AI-voice and "not checked against ACX"); stale audio after a new revision |
+| Recordings: rights, audio check, immutable transcript, speaker correction, quotation → source | `test_recording_rights_transcript_speakers_and_quote_as_source` |
 
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
