@@ -228,6 +228,18 @@ Adapters (`providers/`): `mock`, `ollama` (REST), `openai` / `groq` / `xai` (off
 
 The Open Library adapter is `providers/research_adapters.py`. Planning jobs (outline, research brainstorm) reuse the job runner, with an executor branch in `jobs/planning_exec.py`. Chapter drafting from the outline goes through the normal chapter job path (`ai.enqueue` with run, node and requirements context). See ADR-0006.
 
+### 7.4 Writing layer (Phase 06)
+`pbs_core.writing` contains:
+- `pipeline`: queue, advance and assemble section-by-section draft plans; cancel; run integration;
+- `context`: the token-budget fit and its report;
+- `memory`: brief, local outline, chapter-so-far, earlier-chapter summaries, continuity notes;
+- `protect`: placeholders for code and math;
+- `quality`: the local checks;
+- `originality`: the local overlap report;
+- `store`: finding upserts.
+
+Section and review jobs run on the same job runner through `jobs/writing_exec.py`. Phase 05 generation runs now create one draft plan per chapter. See ADR-0007.
+
 ## 8. Frontend architecture
 
 - React 19 + TypeScript (strict) + Vite. React Router (declarative routes). TanStack Query for server state; no global client store unless needed.

@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from pbs_core.context import AppContext
 from pbs_core.domain.clock import to_iso
-from pbs_core.jobs import planning_exec, prompts
+from pbs_core.jobs import planning_exec, prompts, writing_exec
 from pbs_core.jobs.runner import LEASE_SECONDS, add_log
 from pbs_core.knowledge import citations, retrieval
 from pbs_core.planning import runs
@@ -26,6 +26,7 @@ from pbs_core.services import activity, costs, evidence
 from pbs_core.services import voice as voice_service
 from pbs_core.storage.ai_models import Job, Proposal, ProviderConfig, UsageRecord
 from pbs_core.storage.models import Chapter, ChapterRevision, Project
+from pbs_core.writing import protect
 
 log = structlog.get_logger(__name__)
 PROGRESS_EVERY_S = 0.5
@@ -99,14 +100,31 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         return
 
     planning = inp.get("kind") in planning_exec.KINDS
+    writing = inp.get("kind") in writing_exec.KINDS
     found = retrieval.Retrieved({}, [], [], "", 0)
     voice = None
     processed: citations.Processed | None = None
+    masked: protect.Masked | None = None
+    prepared: writing_exec.Prepared | None = None
     if planning:
         built = planning_exec.build(inp)
+    elif writing:
+        try:
+            prepared = writing_exec.prepare(ctx, job_id, inp)
+        except ProviderError as exc:
+            _finish(ctx, job_id, status="failed", code=exc.code, message=exc.message, partial=None)
+            return
+        built = prepared.built
     else:
         sel_start, sel_end = inp.get("selection_start"), inp.get("selection_end")
         selection = base_text[sel_start:sel_end] if sel_start is not None and sel_end is not None else None
+        if selection and snapshot["task"] in ("revise", "translate"):
+            # Code blocks and math are swapped for placeholders the model must keep; restored afterwards.
+            masked = protect.mask(selection)
+            if masked.spans:
+                selection = masked.text
+            else:
+                masked = None
         context_text = costs.clip_context(
             base_text, sel_start, sel_end, int(inp.get("max_context_chars", costs.MAX_CONTEXT_CHARS))
         )
@@ -211,10 +229,21 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
             raise ProviderError("invalid_output", "The model returned an empty answer.")
         if planning:
             planned = planning_exec.parse(inp, payload, ctx.ids.new)
+        elif writing and prepared is not None:
+            written = writing_exec.parse(inp, payload, prepared)
         elif built.json_schema is not None:
             payload = _structured_to_markdown(payload)
+        if masked is not None:
+            try:
+                payload = protect.unmask(payload, masked)
+            except protect.ProtectedContentChanged as exc:
+                raise ProviderError(
+                    "invalid_output",
+                    "The suggestion changed, dropped or repeated protected code or math "
+                    f"({len(exc.missing)} missing, {len(exc.repeated)} repeated); it was discarded.",
+                ) from exc
         # Check every citation marker against the passages actually provided; flag the rest.
-        if not planning:
+        if not planning and not writing:
             processed = citations.process(payload, found.refs)
             payload = processed.text_md
     except Cancelled:
@@ -260,6 +289,9 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
     if planning:
         planning_exec.commit(ctx, job_id, inp, planned, result, provider, snapshot, built.template)
         return
+    if writing and prepared is not None:
+        writing_exec.commit(ctx, job_id, inp, written, prepared, result, provider, snapshot)
+        return
     if processed is None:  # pragma: no cover - chapter jobs always process citations above
         raise RuntimeError("chapter job finished without citation processing")
     knowledge = {
@@ -285,6 +317,8 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         "used_sources": bool(inp.get("use_sources", True)),
         "voice_profile": voice.get("name") if voice else None,
         **processed.summary(),
+        **({"protected": protect.summary(masked)} if masked is not None else {}),
+        **({"editor_action": inp["action"]} if inp.get("action") else {}),
     }
     _commit(ctx, job_id, payload, result, provider, snapshot, built.template, inp, knowledge, processed)
 

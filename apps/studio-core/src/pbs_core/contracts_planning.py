@@ -262,6 +262,12 @@ class PlanRequestIn(_Model):
     model_name: Annotated[str, StringConstraints(max_length=200)] | None = None
     use_sources: bool = True
     use_interview: bool = False
+    review_gate: Literal["none", "each_section"] = Field(
+        "none", description="each_section: stop after every section for the author's review"
+    )
+    token_budget: Annotated[int, Field(ge=1500, le=200_000)] = Field(
+        6000, description="Input tokens per section prompt (estimate; context is trimmed to fit)"
+    )
     client_request_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,64}$")] = "estimate-only"
 
 
@@ -270,6 +276,7 @@ class PlanChapterOut(BaseModel):
     title: str
     eligible: bool
     reason: str | None
+    sections: int = Field(1, description="Separate model calls: one per outline section")
     target_words: int | None
     input_tokens: int
     max_output_tokens: int
@@ -299,6 +306,7 @@ class RunOut(BaseModel):
     mode: RunMode
     status: Literal["running", "done", "stopped"]
     job_ids: list[str]
+    plan_ids: list[str] = Field(default_factory=list, description="One section-by-section draft plan per chapter")
     skipped: list[dict[str, str]]
     estimate: dict[str, Any]
     budget_cap: str | None

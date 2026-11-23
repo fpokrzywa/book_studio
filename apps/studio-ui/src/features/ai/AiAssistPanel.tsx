@@ -50,6 +50,22 @@ interface Props {
 
 const NOTE_TASKS: AiTask[] = ["summarize", "brainstorm", "outline", "research"];
 
+type EditorAction = NonNullable<AiRequest["action"]>;
+/** Editor actions on the selected passage. Core turns each into a task, a placement and an instruction. */
+const ACTIONS: { value: EditorAction; label: string; task: AiTask; mode: ProposalMode }[] = [
+  { value: "rewrite", label: "Rewrite the selection", task: "revise", mode: "replace_selection" },
+  { value: "expand", label: "Expand it", task: "revise", mode: "replace_selection" },
+  { value: "shorten", label: "Shorten it", task: "revise", mode: "replace_selection" },
+  { value: "tone", label: "Change its tone (say which below)", task: "revise", mode: "replace_selection" },
+  { value: "clarity", label: "Make it clearer", task: "revise", mode: "replace_selection" },
+  { value: "repetition", label: "Remove repetition", task: "revise", mode: "replace_selection" },
+  { value: "transitions", label: "Improve transitions", task: "revise", mode: "replace_selection" },
+  { value: "explain", label: "Explain this passage (a note for you)", task: "summarize", mode: "note" },
+  { value: "exercises", label: "Suggest exercises", task: "draft", mode: "insert_at" },
+  { value: "quiz", label: "Suggest a quiz", task: "draft", mode: "insert_at" },
+  { value: "glossary", label: "Suggest glossary entries", task: "draft", mode: "insert_at" },
+];
+
 function modeFor(task: AiTask, placement: "end" | "cursor", sel: Selection | null): ProposalMode {
   if (NOTE_TASKS.includes(task)) return "note";
   if (task === "revise") return "replace_selection";
@@ -86,6 +102,8 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
   const consent = useConsentActions(projectId);
 
   const [task, setTask] = useState<AiTask>("draft");
+  const [action, setAction] = useState<EditorAction | "">("");
+  const chosenAction = ACTIONS.find((a) => a.value === action);
   const [instruction, setInstruction] = useState("");
   const [choice, setChoice] = useState("default");
   const [placement, setPlacement] = useState<"end" | "cursor">("end");
@@ -100,7 +118,8 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
   const [selection, setSelection] = useState<Selection | null>(null);
   const [requestId, setRequestId] = useState(newRequestId);
 
-  const route = routes.data?.find((r) => r.task === task);
+  const effectiveTask: AiTask = chosenAction?.task ?? task;
+  const route = routes.data?.find((r) => r.task === effectiveTask);
   const options = useMemo(
     () =>
       (providers.data ?? [])
@@ -111,15 +130,16 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
   );
   const [providerId, model] = choice === "default" ? [undefined, undefined] : choice.split("::");
   const chosenProvider = providerId ? providers.data?.find((p) => p.id === providerId) : undefined;
-  const mode = modeFor(task, placement, selection);
-  const needsSelection = mode === "replace_selection";
+  const mode = chosenAction?.mode ?? modeFor(task, placement, selection);
+  const needsSelection = mode === "replace_selection" || !!chosenAction;
   const hasSelection = selection !== null && selection.end > selection.start;
 
   const body: AiRequest = {
     chapter_id: chapterId,
-    task,
+    task: effectiveTask,
     instruction,
     mode,
+    ...(chosenAction ? { action: chosenAction.value } : {}),
     base_revision_no: headNo,
     client_request_id: requestId,
     ...(providerId && model ? { provider_id: providerId, model_name: model } : {}),
@@ -131,7 +151,7 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
     ...(selection && (needsSelection || mode === "insert_at")
       ? {
           selection_start: selection.start,
-          selection_end: mode === "insert_at" ? selection.start : selection.end,
+          selection_end: mode === "insert_at" && !chosenAction ? selection.start : selection.end,
         }
       : {}),
   };
@@ -167,17 +187,41 @@ function RequestForm({ projectId, chapterId, headNo, dirty, locked, onSave, getS
       }}
     >
       <h3 id={`${id}-ask`}>Ask for a suggestion</h3>
+      <div className="field">
+        <label htmlFor={`${id}-action`}>Editor action on the selection</label>
+        <select
+          id={`${id}-action`}
+          value={action}
+          onChange={(e) => setAction(e.target.value as EditorAction | "")}
+        >
+          <option value="">None: choose a task below</option>
+          {ACTIONS.map((a) => (
+            <option key={a.value} value={a.value}>
+              {a.label}
+            </option>
+          ))}
+        </select>
+        <p className="hint">
+          Works on the passage you select. Code and math in it are kept exactly as written. You see the
+          changes word by word before you accept.
+        </p>
+      </div>
       <div className="form-row">
         <div className="field">
           <label htmlFor={`${id}-task`}>Task</label>
-          <select id={`${id}-task`} value={task} onChange={(e) => setTask(e.target.value as AiTask)}>
+          <select
+            id={`${id}-task`}
+            value={effectiveTask}
+            disabled={!!chosenAction}
+            onChange={(e) => setTask(e.target.value as AiTask)}
+          >
             {TASKS.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
           </select>
-          <p className="hint">{TASKS.find((t) => t.value === task)?.help}</p>
+          <p className="hint">{TASKS.find((t) => t.value === effectiveTask)?.help}</p>
         </div>
         <div className="field">
           <label htmlFor={`${id}-model`}>Model</label>
@@ -524,9 +568,12 @@ function ProposalCard({
         </p>
       </header>
       <p>{MODE_TEXT[p.mode]}</p>
-      {p.mode === "replace_selection" && p.original_text ? (
+      {p.mode === "replace_selection" && p.diff ? (
+        <DiffView diff={p.diff} />
+      ) : p.mode === "replace_selection" && p.original_text ? (
         <blockquote className="original">{p.original_text}</blockquote>
       ) : null}
+      <Protected provenance={p.provenance} />
       <div className="field">
         <label htmlFor={`${id}-text`}>
           {note ? "Answer" : "Suggested text (you can edit it before accepting)"}
@@ -664,5 +711,39 @@ function ParagraphSources({ provenance }: { provenance: Record<string, unknown> 
         ))}
       </ol>
     </section>
+  );
+}
+
+function DiffView({ diff }: { diff: NonNullable<Proposal["diff"]> }) {
+  const id = useId();
+  return (
+    <figure className="diff-inline" aria-labelledby={`${id}-cap`}>
+      <figcaption id={`${id}-cap`}>
+        Changes, word by word (removed text struck through, new text underlined)
+      </figcaption>
+      <p>
+        {diff.map((d, i) =>
+          d.op === "delete" ? (
+            <del key={i}>{d.text}</del>
+          ) : d.op === "insert" ? (
+            <ins key={i}>{d.text}</ins>
+          ) : (
+            <span key={i}>{d.text}</span>
+          ),
+        )}
+      </p>
+    </figure>
+  );
+}
+
+function Protected({ provenance }: { provenance: Record<string, unknown> }) {
+  const k = provenance.knowledge as { protected?: { protected_spans?: number } } | undefined;
+  const n = k?.protected?.protected_spans ?? 0;
+  if (!n) return null;
+  return (
+    <p className="hint">
+      {n} code or math span(s) in the selection were kept exactly as written (the model could not change
+      them).
+    </p>
   );
 }

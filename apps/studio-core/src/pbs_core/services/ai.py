@@ -30,6 +30,7 @@ from pbs_core.contracts_ai import (
     AiRequestIn,
     AiStatusOut,
     ConsentOut,
+    DiffSegment,
     EstimateOut,
     HealthOut,
     JobLogOut,
@@ -52,6 +53,7 @@ from pbs_core.contracts_ai import (
     UsageTotalOut,
 )
 from pbs_core.document import bookmd
+from pbs_core.domain import diff as text_diff
 from pbs_core.domain.errors import ConflictError, NotFoundError, ValidationFailedError
 from pbs_core.domain.ids import is_ulid
 from pbs_core.jobs import prompts
@@ -637,8 +639,69 @@ class _Plan:
     answers: int
 
 
+# Editor actions: (task, mode, instruction). The author's own instruction is added after it.
+EDITOR_ACTIONS: dict[str, tuple[str, str, str]] = {
+    "rewrite": ("revise", "replace_selection", "Rewrite the selected passage."),
+    "expand": (
+        "revise",
+        "replace_selection",
+        "Expand the selected passage to about one and a half times its length with more detail and examples. "
+        "Do not add facts that are not in the material you were given.",
+    ),
+    "shorten": ("revise", "replace_selection", "Shorten the selected passage to about half its length."),
+    "tone": ("revise", "replace_selection", "Change the tone of the selected passage."),
+    "clarity": ("revise", "replace_selection", "Make the selected passage clearer and easier to read."),
+    "repetition": (
+        "revise",
+        "replace_selection",
+        "Remove repetition from the selected passage: repeated words, phrases and ideas.",
+    ),
+    "transitions": (
+        "revise",
+        "replace_selection",
+        "Improve the transitions between the sentences and paragraphs of the selected passage.",
+    ),
+    "explain": ("summarize", "note", "Explain the selected passage in plain words, for the author's notes."),
+    "exercises": (
+        "draft",
+        "insert_at",
+        "Write three exercises the reader can do, based only on the selected passage, as a short Markdown list.",
+    ),
+    "quiz": (
+        "draft",
+        "insert_at",
+        "Write a short quiz (three to five questions with answers) based only on the selected passage.",
+    ),
+    "glossary": (
+        "draft",
+        "insert_at",
+        "Write glossary entries for the key terms in the selected passage, as a Markdown list of "
+        "'**term**: definition'. Define only what the passage explains.",
+    ),
+}
+
+
+def apply_action(data: AiRequestIn) -> AiRequestIn:
+    """Turn an editor action into a normal request: task, placement and instruction."""
+    if not data.action:
+        return data
+    task, mode, text = EDITOR_ACTIONS[data.action]
+    if data.action == "tone" and not data.instruction.strip():
+        raise ValidationFailedError("Say which tone you want, for example: warmer, more formal, more direct.")
+    if data.selection_start is None or data.selection_end is None or data.selection_end <= data.selection_start:
+        raise ValidationFailedError("Select the passage first.")
+    extra = data.instruction.strip()
+    instruction = f"{text} {('Detail from the author: ' + extra) if extra else ''}".strip()
+    changes: dict[str, Any] = {"task": task, "mode": mode, "instruction": instruction[:4000], "action": None}
+    if mode == "insert_at":  # suggestions go right after the selected passage
+        changes["selection_start"] = data.selection_end
+        changes["selection_end"] = data.selection_end
+    return data.model_copy(update=changes)
+
+
 def _plan(ctx: AppContext, s: Session, project_id: str, data: AiRequestIn) -> _Plan:
     """Resolve and validate everything about a request. Raises with an actionable message."""
+    data = apply_action(data)
     project = require_active(s, project_id)
     chapter = chapters._require_chapter(s, project_id, data.chapter_id)
     if data.base_revision_no != chapter.head_revision_no:
@@ -647,9 +710,9 @@ def _plan(ctx: AppContext, s: Session, project_id: str, data: AiRequestIn) -> _P
         raise ConflictError(
             "Save your changes first, so the AI works from the text you see.", extra={"reason": "unsaved_changes"}
         )
-    if chapter.status == "approved":
+    if chapter.status == "approved" or chapter.locked:
         raise ConflictError(
-            "This chapter is approved and locked. Reopen it for editing before asking for suggestions.",
+            "This chapter is approved or locked. Reopen or unlock it before asking for suggestions.",
             extra={"reason": "chapter_approved"},
         )
     head = chapters._head(s, chapter)
@@ -787,6 +850,8 @@ def estimate(ctx: AppContext, project_id: str, data: AiRequestIn) -> EstimateOut
 def enqueue(ctx: AppContext, project_id: str, data: AiRequestIn, extra: dict[str, Any] | None = None) -> JobOut:
     """Queue a chapter job. `extra` adds planning context (run id, outline node, requirements)."""
     key = f"{project_id}:{data.client_request_id}"
+    action = data.action
+    data = apply_action(data)
     with ctx.db.tx() as s:
         existing = s.scalars(select(Job).where(Job.idempotency_key == key)).one_or_none()
         if existing is not None:  # same request sent twice: same job
@@ -809,6 +874,7 @@ def enqueue(ctx: AppContext, project_id: str, data: AiRequestIn, extra: dict[str
             "use_sources": data.use_sources,
             "use_interview": data.use_interview,
             "voice_profile_id": data.voice_profile_id,
+            "action": action,
             **(extra or {}),
         }
         job = Job(
@@ -1079,6 +1145,10 @@ def _applicability(p: Proposal, chapter: Chapter | None, head: ChapterRevision |
         return False, "This is a note for you to read; it is not inserted into the chapter."
     if chapter is None:
         return False, "The chapter no longer exists."
+    if chapter.locked:
+        return False, "The chapter is locked, so AI text is not applied to it. Unlock it first if you want this."
+    if chapter.status == "approved":
+        return False, "The chapter is approved, so AI text is not applied to it. Reopen it first if you want this."
     current = head.source_md if head is not None else ""
     if p.mode == "replace_selection":
         start, end = p.selection_start or 0, p.selection_end or 0
@@ -1115,6 +1185,9 @@ def _proposal_out(s: Session, p: Proposal) -> ProposalOut:
         provenance=json.loads(p.provenance_json or "{}"),
         created_at=p.created_at,
         decided_at=p.decided_at,
+        diff=[DiffSegment(op=op, text=t) for op, t in text_diff.inline(p.original_text, p.payload_md)]
+        if p.mode == "replace_selection" and p.original_text is not None
+        else None,
     )
 
 

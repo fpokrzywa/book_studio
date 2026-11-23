@@ -127,7 +127,15 @@ export function useCreateChapter(pid: string) {
 export function useUpdateChapter(pid: string) {
   const invalidate = useInvalidateProjects();
   return useMutation({
-    mutationFn: ({ cid, ...body }: { cid: string; title?: string; status?: ChapterStatus }) =>
+    mutationFn: ({
+      cid,
+      ...body
+    }: {
+      cid: string;
+      title?: string;
+      status?: ChapterStatus;
+      locked?: boolean;
+    }) =>
       call(
         api.PATCH("/api/projects/{project_id}/chapters/{chapter_id}", {
           params: { path: { project_id: pid, chapter_id: cid } },

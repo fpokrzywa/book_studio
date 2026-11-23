@@ -60,6 +60,9 @@ def stop(s: Session, ctx: AppContext, run: GenerationRun, reason: str, *, except
         elif job.status == "running":
             job.cancel_requested = 1
             add_log(s, ctx, jid, reason, "warning")
+    from pbs_core.writing import pipeline  # local import: pipeline uses requirements_check below
+
+    pipeline.stop_run_plans(s, ctx, run.id, reason)
     run.status, run.stop_reason, run.finished_at = "stopped", reason, now
 
 

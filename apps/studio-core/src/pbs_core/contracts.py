@@ -124,6 +124,7 @@ class ChapterPatch(_Model):
     status: ChapterStatus | None = None
     kind: ChapterKind | None = None
     target_word_count: Annotated[int, Field(ge=0, le=5_000_000)] | None = None
+    locked: bool | None = Field(None, description="Locked: AI never drafts into it and AI text cannot be applied to it")
 
 
 class ChapterMove(_Model):

@@ -178,6 +178,30 @@ Indexes: `(status, updated_at)`. Library search (as built) is a case-folded subs
 - **`generation_run`**: mode (one_chapter or entire_book), status, outline version, budget cap, currency, spent, unknown-cost count, job IDs, skipped chapters with reasons, estimate, stop reason.
 - **`chapter.outline_node_id`** (from Phase 01) links a chapter to its node.
 
+### 2.3c Phase 06 tables as built (migration `0007`, ADR-0007)
+
+- **`draft_plan`** (one chapter):
+  - `status` (waiting, running, paused, awaiting_review, ready or cancelled) and `review_gate` (none or each_section);
+  - `run_id` and `run_order`, outline version and node, base revision;
+  - provider, model, temperature, per-section `max_output_tokens`, `token_budget`;
+  - options (sources, interview, voice, requirements), `proposal_id`, note.
+- **`draft_section`**:
+  - `ordinal`, outline node, title, heading flag, goal, target words;
+  - `status` (pending, active, done or cancelled; failed and queued come from the job);
+  - latest `job_id` and every attempt in `job_ids_json`;
+  - `output_md`, `edited`, `summary`;
+  - `context_json` (the token-budget report), `citations_json` (paragraph support, claims, sources), `provenance_json`, `reviewed_at`.
+- **`continuity_fact`**:
+  - `kind` (character, location, relationship, event, thread, term or other), name, attribute, value, `story_time`;
+  - chapter and plan;
+  - `origin` (author or ai_extracted) and `status` (proposed, confirmed, rejected or resolved).
+- **`chapter_summary`**: chapter, plan, text, `origin` (ai_draft or author). The newest row is current.
+- **`quality_finding`**:
+  - `check_code`, `origin` (rule or ai_review), severity, `fingerprint` (unique per book), message, excerpt, details, revision number;
+  - `present`, and `state` (open, needs_source, will_fix, dismissed or fixed), plus note.
+- **`chapter.locked`** (from Phase 01) is now set by the author ("Lock against AI changes").
+- App setting `code_check_authorized:<project_id>` records whether code checks are allowed for that book.
+
 ### 2.4 Phase 04–08 tables (design intent)
 
 - **Knowledge:** `knowledge_library (id, scope project|shared, project_id nullable, name)`, `project_library_link`, `knowledge_source (id, library_id, kind file|url|interview, title, uri, original_file_id, retrieved_at, content_sha256, enabled, tags_json, index_status)`, `source_chunk (id, source_id, ordinal, text, heading_path, page_from, page_to, char_start, char_end, sha256)` (immutable), `source_chunk_fts` (FTS5, external content), `chunk_embedding (chunk_id, model, dim, vector BLOB)` (optional).

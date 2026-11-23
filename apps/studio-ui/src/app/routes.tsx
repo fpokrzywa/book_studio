@@ -10,6 +10,7 @@ import { InterviewPage } from "../features/knowledge/InterviewPage";
 import { KnowledgePage } from "../features/knowledge/KnowledgePage";
 import { SourcePage } from "../features/knowledge/SourcePage";
 import { VoicePage } from "../features/knowledge/VoicePage";
+import { WritePage } from "../features/writing/WritePage";
 import { PlanPage } from "../features/planning/PlanPage";
 import { ChapterEditorPage } from "../features/editor/ChapterEditorPage";
 import { HelpPage } from "../features/help/HelpPage";
@@ -44,6 +45,7 @@ export const routes: RouteObject[] = [
       { path: "projects/:projectId/chapters/:chapterId", element: <ChapterEditorPage /> },
       { path: "projects/:projectId/knowledge", element: <BookKnowledgePage /> },
       { path: "projects/:projectId/plan", element: <PlanPage /> },
+      { path: "projects/:projectId/write", element: <WritePage /> },
       { path: "projects/:projectId/evidence", element: <EvidencePage /> },
       { path: "projects/:projectId/interview", element: <InterviewPage /> },
       { path: "knowledge", element: <KnowledgePage /> },

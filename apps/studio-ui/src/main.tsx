@@ -8,6 +8,7 @@ import "./styles/manuscript.css";
 import "./styles/ai.css";
 import "./styles/knowledge.css";
 import "./styles/planning.css";
+import "./styles/writing.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";

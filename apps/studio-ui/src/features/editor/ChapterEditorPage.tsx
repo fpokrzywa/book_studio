@@ -70,6 +70,7 @@ export function ChapterEditorPage() {
         chapterId={chapterId}
         chapterTitle={chapter.data.title}
         status={chapter.data.status}
+        aiLocked={chapter.data.locked}
         initial={content.data}
       />
     </div>
@@ -119,6 +120,7 @@ interface EditorProps {
   chapterId: string;
   chapterTitle: string;
   status: ChapterStatus;
+  aiLocked: boolean;
   initial: ChapterContent;
 }
 
@@ -131,6 +133,7 @@ function Editor({
   chapterId,
   chapterTitle,
   status,
+  aiLocked,
   initial,
 }: EditorProps) {
   usePageTitle(chapterTitle);
@@ -336,6 +339,23 @@ function Editor({
               ))}
             </select>
           </div>
+          <label className="inline-check">
+            <input
+              type="checkbox"
+              checked={aiLocked}
+              disabled={readOnly || updateChapter.isPending}
+              onChange={(e) =>
+                updateChapter.mutate(
+                  { cid: chapterId, locked: e.target.checked },
+                  {
+                    onSuccess: (ch) =>
+                      announce(ch.locked ? "Locked against AI changes" : "AI suggestions allowed again"),
+                  },
+                )
+              }
+            />
+            Lock against AI changes
+          </label>
           <span className="save-state" data-dirty={dirty} aria-live="off">
             {state}
             {!dirty && base.saved_at ? (
@@ -554,7 +574,7 @@ function Editor({
             chapterId={chapterId}
             headNo={base.revision_no}
             dirty={dirty}
-            locked={locked}
+            locked={locked || aiLocked}
             onSave={() => doSave(base.revision_no)}
             getSelection={() => editor.current?.getSelection() ?? null}
             proposals={proposals.data ?? []}

@@ -1020,12 +1020,16 @@ function DraftTab({ projectId, brief, readOnly }: { projectId: string; brief: Br
   const [chapterId, setChapterId] = useState("");
   const [model, setModel] = useState("");
   const [useSources, setUseSources] = useState(true);
+  const [gate, setGate] = useState(false);
+  const [budget, setBudget] = useState("6000");
   const [est, setEst] = useState<PlanEstimate | null>(null);
   const body = {
     mode,
     chapter_ids: mode === "one_chapter" && chapterId ? [chapterId] : [],
     use_sources: useSources,
     use_interview: brief.kind === "memoir",
+    review_gate: gate ? ("each_section" as const) : ("none" as const),
+    token_budget: Math.min(200000, Math.max(1500, Number(budget) || 6000)),
     ...modelFields(model),
   };
   const blockedByOutline =
@@ -1036,9 +1040,10 @@ function DraftTab({ projectId, brief, readOnly }: { projectId: string; brief: Br
       <section className="panel" aria-labelledby={`${id}-h`}>
         <h2 id={`${id}-h`}>Draft chapters from the approved outline</h2>
         <p className="hint">
-          Every draft arrives as a suggestion in the chapter for you to accept, edit or reject. Locked and
-          approved chapters are skipped, and chapters that already have text are skipped when drafting the
-          whole book.
+          Chapters are drafted one outline section at a time, each with the brief, the local outline,
+          summaries of earlier chapters, continuity notes and source passages trimmed to a token budget. Every
+          chapter arrives as one suggestion for you to accept, edit or reject. Locked and approved chapters
+          are skipped, and chapters that already have text are skipped when drafting the whole book.
         </p>
         <fieldset className="segmented">
           <legend>What to draft</legend>
@@ -1114,6 +1119,37 @@ function DraftTab({ projectId, brief, readOnly }: { projectId: string; brief: Br
           />
           Use this book's sources
         </label>
+        <label className="inline-check">
+          <input
+            type="checkbox"
+            checked={gate}
+            onChange={(e) => {
+              setGate(e.target.checked);
+              setEst(null);
+            }}
+          />
+          Stop after each section so I can review it
+        </label>
+        <div className="field narrow">
+          <label htmlFor={`${id}-budget`}>Token budget per section prompt</label>
+          <input
+            id={`${id}-budget`}
+            type="number"
+            min={1500}
+            max={200000}
+            step={500}
+            inputMode="numeric"
+            value={budget}
+            onChange={(e) => {
+              setBudget(e.target.value);
+              setEst(null);
+            }}
+          />
+          <p className="hint">
+            An estimate (about four characters per token). Context that does not fit is trimmed, and each
+            section shows what was included.
+          </p>
+        </div>
         <div className="page-actions">
           <button
             type="button"
@@ -1149,7 +1185,9 @@ function DraftTab({ projectId, brief, readOnly }: { projectId: string; brief: Br
                   {
                     onSuccess: (r) => {
                       setEst(null);
-                      announce(`Started: ${r.job_ids.length} chapter draft(s) queued for review`);
+                      announce(
+                        `Started: ${(r.plan_ids ?? []).length} chapter draft(s), one section at a time`,
+                      );
                     },
                   },
                 )
@@ -1170,7 +1208,7 @@ function DraftTab({ projectId, brief, readOnly }: { projectId: string; brief: Br
             {runs.data!.map((r) => (
               <li key={r.id}>
                 <strong>{r.mode === "entire_book" ? "Whole book" : "One chapter"}</strong>: {r.status},{" "}
-                {r.job_ids.length} chapter(s), spent {r.spent}
+                {(r.plan_ids ?? []).length || r.job_ids.length} chapter(s), spent {r.spent}
                 {r.currency ? ` ${r.currency}` : ""}
                 {r.budget_cap ? ` of a ${r.budget_cap} ${r.currency ?? ""} cap` : ""}
                 {r.unknown_cost_calls ? `, ${r.unknown_cost_calls} with unknown cost` : ""}
@@ -1181,7 +1219,8 @@ function DraftTab({ projectId, brief, readOnly }: { projectId: string; brief: Br
                   </p>
                 ) : null}
                 <div className="page-actions">
-                  <Link to="/jobs">Progress in AI jobs</Link>
+                  <Link to={`/projects/${projectId}/write`}>Follow the drafts section by section</Link>
+                  <Link to="/jobs">AI jobs</Link>
                   {r.status === "running" ? (
                     <button type="button" className="btn btn-small" onClick={() => actions.stop.mutate(r.id)}>
                       Stop
@@ -1219,6 +1258,7 @@ function EstimateTable({ est }: { est: PlanEstimate }) {
           <tr>
             <th scope="col">Chapter</th>
             <th scope="col">Target words</th>
+            <th scope="col">Sections (model calls)</th>
             <th scope="col">Tokens in / out (max)</th>
             <th scope="col">Will draft?</th>
           </tr>
@@ -1228,6 +1268,7 @@ function EstimateTable({ est }: { est: PlanEstimate }) {
             <tr key={c.chapter_id}>
               <th scope="row">{c.title}</th>
               <td>{c.target_words?.toLocaleString() ?? "not set"}</td>
+              <td>{c.sections}</td>
               <td>
                 {c.input_tokens.toLocaleString()} / {c.max_output_tokens.toLocaleString()}
               </td>

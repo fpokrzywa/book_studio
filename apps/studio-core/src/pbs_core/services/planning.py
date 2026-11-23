@@ -16,7 +16,6 @@ Guarantees (docs/ADR/0006-planning.md):
 from __future__ import annotations
 
 import json
-import math
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -25,7 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from pbs_core.context import AppContext
-from pbs_core.contracts_ai import AiRequestIn, JobOut
+from pbs_core.contracts_ai import JobOut
 from pbs_core.contracts_planning import (
     ApplyOut,
     BriefIn,
@@ -61,11 +60,13 @@ from pbs_core.providers import registry
 from pbs_core.providers.egress import EgressPermit
 from pbs_core.providers.research_adapters import LABELS
 from pbs_core.services import activity, ai, costs, knowledge, projects
+from pbs_core.services import writing as writing_service
 from pbs_core.services.projects import require_active, require_project
 from pbs_core.storage.ai_models import Job, ModelInfo, ProviderConfig, UsageRecord
 from pbs_core.storage.knowledge_models import AuthorProfile
 from pbs_core.storage.models import AppSetting, Chapter, ChapterDraft, Project
 from pbs_core.storage.planning_models import BookBrief, GenerationRun, OutlineVersion, ResearchFinding, ResearchQuery
+from pbs_core.storage.writing_models import DraftPlan
 
 PROJECT_TO_KIND = {
     "fiction": "fiction",
@@ -76,8 +77,6 @@ PROJECT_TO_KIND = {
     "technical": "manual",
     "nonfiction": "nonfiction",
 }
-SYSTEM_PROMPT_CHARS = 2_000
-PASSAGE_BUDGET = 12_000
 
 
 class ResearchUnavailableError(ConflictError):
@@ -871,31 +870,29 @@ def _plan_run(
     elif data.chapter_ids:
         wanted = set(data.chapter_ids)
         linked = [t for t in linked if t[0].id in wanted]
-    use_sources = data.use_sources and bool(retrieval.usable_source_ids(s, project_id))
     rows: list[PlanChapterOut] = []
     eligible: list[tuple[Chapter, dict[str, Any]]] = []
     total_cost: Decimal | None = Decimal(0)
     currency: str | None = None
     notes: set[str] = set()
     out_tokens_total = 0
-    brief_chars = len(json.dumps(_brief_dict(s, project, b)))
     for c, node in linked:
         reason = None
         if c.locked or c.status == "approved":
             reason = "Locked or approved: left as it is."
+        elif _drafting(s, c.id):
+            reason = "Already has a draft in progress: finish or cancel it first."
         elif s.get(ChapterDraft, c.id) is not None:
             reason = "Has unsaved changes: save or discard them first."
         elif data.mode == "entire_book" and c.head_revision_no > 0:
             reason = "Already has text: your writing is kept (draft it on its own with 'one chapter')."
         target = node.get("target_words") or c.target_word_count
-        max_out = (
-            min(math.ceil(target * 1.5) + 200, (info.max_output_tokens if info and info.max_output_tokens else 32_000))
-            if target
-            else max_out_default
+        # Phase 06: one model call per outline section, each within the token budget.
+        split = writing_service.section_split(
+            node, c, info.max_output_tokens if info and info.max_output_tokens else None, max_out_default
         )
-        prompt_chars = (
-            SYSTEM_PROMPT_CHARS + brief_chars + len(json.dumps(node)) + (PASSAGE_BUDGET if use_sources else 0)
-        )
+        max_out = sum(int(x["max_out"]) for x in split)
+        prompt_chars = len(split) * data.token_budget * 4
         est: dict[str, Any] = costs.estimate(s, provider, model, prompt_chars, max_out)
         rows.append(
             PlanChapterOut(
@@ -906,6 +903,7 @@ def _plan_run(
                 target_words=target,
                 input_tokens=int(est["input_tokens"]),
                 max_output_tokens=max_out,
+                sections=len(split),
             )
         )
         if reason is not None:
@@ -966,10 +964,26 @@ def estimate_run(ctx: AppContext, project_id: str, data: PlanRequestIn) -> PlanE
         return est
 
 
+def _drafting(s: Session, chapter_id: str) -> bool:
+    return (
+        s.scalars(
+            select(DraftPlan.id).where(
+                DraftPlan.chapter_id == chapter_id,
+                DraftPlan.status.in_(("waiting", "running", "paused", "awaiting_review")),
+            )
+        ).first()
+        is not None
+    )
+
+
 def _run_out(s: Session, r: GenerationRun) -> RunOut:
     ids = json.loads(r.job_ids_json)
     status = r.status
-    if status == "running" and ids:
+    plans = writing_service.run_plans(s, r.id)
+    if status == "running" and plans:
+        if all(p.status in ("ready", "cancelled") for p in plans):
+            status = "done"
+    elif status == "running" and ids:
         active = s.scalar(
             select(func.count()).select_from(Job).where(Job.id.in_(ids), Job.status.in_(("queued", "running")))
         )
@@ -980,6 +994,7 @@ def _run_out(s: Session, r: GenerationRun) -> RunOut:
         mode=r.mode,
         status=status,
         job_ids=ids,
+        plan_ids=[p.id for p in plans],
         skipped=json.loads(r.skipped_json),
         estimate=json.loads(r.estimate_json),
         budget_cap=r.budget_cap,
@@ -994,7 +1009,7 @@ def _run_out(s: Session, r: GenerationRun) -> RunOut:
 
 def start_run(ctx: AppContext, project_id: str, data: PlanRequestIn) -> RunOut:
     with ctx.db.tx() as s:
-        est, eligible, o, provider = _plan_run(ctx, s, project_id, data)
+        est, eligible, o, _provider = _plan_run(ctx, s, project_id, data)
         if est.blocked_reason:
             raise BudgetBlockedError(est.blocked_reason, extra={"reason": "blocked"})
         b = _ensure_brief(s, ctx, require_project(s, project_id))
@@ -1019,46 +1034,39 @@ def start_run(ctx: AppContext, project_id: str, data: PlanRequestIn) -> RunOut:
         )
         s.add(run)
         s.flush()
-        plans = [
-            (
-                c.id,
-                c.head_revision_no,
-                node,
-                _instruction(b, node, fiction),
-                node.get("target_words") or c.target_word_count,
-                est.chapters[[r.chapter_id for r in est.chapters].index(c.id)].max_output_tokens,
+        provider_obj, model, temperature, max_out_default = ai.resolve_model(
+            s, "draft", data.provider_id, data.model_name
+        )
+        options = {
+            "use_sources": data.use_sources,
+            "use_interview": data.use_interview or b.kind == "memoir",
+            "voice_profile_id": b.author_profile_id,
+            "fiction": fiction,
+        }
+        for i, (c, node) in enumerate(eligible):
+            writing_service.create_plan(
+                s,
+                ctx,
+                project_id=project_id,
+                chapter=c,
+                node=node,
+                outline_version_id=o.id,
+                run_id=run.id,
+                run_order=i,
+                provider=provider_obj,
+                model=model,
+                temperature=temperature,
+                default_out=max_out_default,
+                token_budget=data.token_budget,
+                review_gate=data.review_gate,
+                options=options,
+                start=i == 0,
             )
-            for c, node in eligible
-        ]
-        run_id, use_interview = run.id, data.use_interview or b.kind == "memoir"
-    job_ids: list[str] = []
-    for i, (cid, head_no, node, instruction, target, max_out) in enumerate(plans):
-        req = AiRequestIn(
-            chapter_id=cid,
-            task="draft",
-            instruction=instruction,
-            mode="append",
-            base_revision_no=head_no,
-            provider_id=provider.id,
-            model_name=est.model_name,
-            max_output_tokens=max(16, min(max_out, 200_000)),
-            target_words=max(10, min(int(target), 20_000)) if target else None,
-            use_sources=data.use_sources,
-            use_interview=use_interview,
-            client_request_id=f"{run_id}-{i}"[:64],
-        )
-        job = ai.enqueue(
-            ctx,
-            project_id,
-            req,
-            extra={"run_id": run_id, "outline_node_id": node["id"], "requirements": node.get("requirements") or {}},
-        )
-        job_ids.append(job.id)
+        run_id = run.id
     with ctx.db.tx() as s:
         run2 = s.get(GenerationRun, run_id)
         if run2 is None:  # pragma: no cover - created above
             raise NotFoundError("Run not found.")
-        run2.job_ids_json = json.dumps(job_ids)
         activity.record(
             s,
             ctx,
@@ -1066,11 +1074,14 @@ def start_run(ctx: AppContext, project_id: str, data: PlanRequestIn) -> RunOut:
             project_id=project_id,
             ref_type="run",
             ref_id=run_id,
-            summary=f"Started drafting {len(job_ids)} chapter(s) ({data.mode.replace('_', ' ')}); "
-            "each result waits for your review",
+            summary=f"Started drafting {len(eligible)} chapter(s) section by section "
+            f"({data.mode.replace('_', ' ')}); each chapter waits for your review",
         )
         s.flush()
-        return _run_out(s, run2)
+        out = _run_out(s, run2)
+    if ctx.jobs is not None:
+        ctx.jobs.wake()
+    return out
 
 
 def list_runs(ctx: AppContext, project_id: str) -> list[RunOut]:

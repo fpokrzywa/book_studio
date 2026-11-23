@@ -76,6 +76,10 @@ def planning_answer(schema: dict[str, object], prompt: str) -> str | None:
     props = schema.get("properties") if isinstance(schema, dict) else None
     if not isinstance(props, dict):
         return None
+    if "facts" in props and "text" in props:
+        return _section_answer(prompt)
+    if "findings" in props:
+        return _review_answer(prompt)
     fiction = "Kind of book: fiction" in prompt
     if "chapters" in props:
         try:
@@ -128,3 +132,84 @@ def planning_answer(schema: dict[str, object], prompt: str) -> str | None:
             items.append({"text": "A bestseller niche worth $2 million a year", "rationale": "High demand."})
         return json.dumps({"items": items})
     return None
+
+
+# ---------- writing pipeline answers (one section, AI review) ----------
+
+
+def _section_answer(prompt: str) -> str:
+    """A deterministic section: labelled test text, the knowledge citation paragraphs, a summary, facts.
+
+    ``[[mock:conflict]]`` in a section goal makes the extracted facts contradict earlier ones, so the
+    continuity check can be tested.
+    """
+    import json
+
+    title = _field(prompt, "Section title") or "this section"
+    chapter = _field(prompt, "Chapter") or "this chapter"
+    m = re.search(r"Section (\d+) of (\d+)", prompt)
+    no = m.group(1) if m else "1"
+    body = (
+        f"[Test model output, not AI] Section {no} of “{chapter}”: {title}. "
+        f"This text stands in for a real draft of the section and says nothing factual."
+    )
+    text = with_knowledge(body, prompt)
+    fiction = "In 'facts', list characters" in prompt
+    conflict = "[[mock:conflict]]" in prompt
+    facts: list[dict[str, str]] = []
+    if fiction:
+        facts.append(
+            {
+                "kind": "character",
+                "name": "Mara",
+                "attribute": "eye colour",
+                "value": "brown" if conflict else "green",
+                "story_time": "",
+            }
+        )
+        facts.append(
+            {
+                "kind": "event",
+                "name": f"{title} ({chapter})",
+                "attribute": "",
+                "value": f"Happens in {title}.",
+                "story_time": "1990" if conflict else f"199{no}",
+            }
+        )
+    else:
+        facts.append(
+            {
+                "kind": "term",
+                "name": title[:60],
+                "attribute": "definition",
+                "value": f"Introduced in “{chapter}”.",
+                "story_time": "",
+            }
+        )
+    return json.dumps(
+        {"text": text, "summary": f"[Test model output] Covers “{title}” in “{chapter}”.", "facts": facts},
+        ensure_ascii=False,
+    )
+
+
+def _review_answer(prompt: str) -> str:
+    """One real quote from the chapter text and one invented quote (which PBS must drop)."""
+    import json
+
+    m = re.search(r'<pbs-data-[0-9a-f]+ label="chapter text"[^>]*>\n(.*?)\n</pbs-data-', prompt, re.S)
+    body = m.group(1) if m else ""
+    first = ""
+    for para in re.split(r"\n\s*\n", body):
+        p = " ".join(para.split())
+        if p and not p.startswith(("#", "```", "|")):
+            first = _first_sentence(p)
+            break
+    findings = []
+    if first:
+        findings.append(
+            {"check": "clarity", "quote": first, "message": "[Test model output] This sentence could be clearer."}
+        )
+    findings.append(
+        {"check": "unsupported_claim", "quote": "A sentence that is not in the chapter at all.", "message": "Invented."}
+    )
+    return json.dumps({"findings": findings})

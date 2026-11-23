@@ -272,14 +272,16 @@ def update_chapter(ctx: AppContext, project_id: str, chapter_id: str, patch: Cha
                     f"Another chapter already uses the slug “{new_slug}”.", extra={"reason": "slug_taken"}
                 )
         for key, value in changes.items():
-            if key in ("title", "status", "slug", "kind") and value is None:
+            if key in ("title", "status", "slug", "kind", "locked") and value is None:
                 continue
-            setattr(chapter, key, value)
+            setattr(chapter, key, int(value) if key == "locked" else value)
         now = ctx.clock.iso()
         chapter.updated_at = now
         _touch_project(s, project_id, now)
         if "title" in changes and chapter.title != old_title:
             summary = f"Renamed chapter “{old_title}” to “{chapter.title}”"
+        elif changes.get("locked") is not None:
+            summary = f"{'Locked' if chapter.locked else 'Unlocked'} “{chapter.title}” against AI changes"
         elif "status" in changes:
             summary = f"Set “{chapter.title}” status to {chapter.status.replace('_', ' ')}"
         else:

@@ -426,10 +426,11 @@ def test_entire_book_honours_prose_locks_and_review(
     assert "Already has text" in reasons[c1["title"]] and "Locked or approved" in reasons[c2["title"]]
     assert est["minutes_estimate"] is not None or "unknown" in est["time_note"]
     run = client.post(f"/api/projects/{pid}/runs", json={**body, "client_request_id": rid()}).json()
-    assert len(run["job_ids"]) == 2 and len(run["skipped"]) == 2
+    # Phase 06: one plan per chapter, drafted section by section; only the first section is queued now.
+    assert len(run["plan_ids"]) == 2 and len(run["job_ids"]) == 1 and len(run["skipped"]) == 2
     runner.run_until_idle()
-    sent = captured[-1].messages[-1].content
-    assert "Cover these sections in order" in sent and "## " in sent
+    sent = [r.messages[-1].content for r in captured]
+    assert any("Write section 2 of 2 of this chapter" in m for m in sent)
     props = client.get(f"/api/projects/{pid}/proposals").json()
     assert {p["chapter_id"] for p in props} == {c3["id"], c4["id"]}
     assert all(p["provenance"]["outline_node_id"] for p in props)
@@ -444,7 +445,7 @@ def test_entire_book_honours_prose_locks_and_review(
         f"/api/projects/{pid}/runs",
         json={**body, "mode": "one_chapter", "chapter_ids": [c1["id"]], "client_request_id": rid()},
     )
-    assert one.status_code == 202 and len(one.json()["job_ids"]) == 1
+    assert one.status_code == 202 and len(one.json()["job_ids"]) == 1 and len(one.json()["plan_ids"]) == 1
 
 
 def test_chapter_limit_blocks_large_runs(client: TestClient, runner: JobRunner) -> None:
@@ -463,6 +464,9 @@ def test_chapter_limit_blocks_large_runs(client: TestClient, runner: JobRunner) 
     )
 
 
+SECTION_JSON = json.dumps({"text": "Drafted text.", "summary": "A summary.", "facts": []})
+
+
 def _cloud(client: TestClient, ctx: AppContext, pid: str) -> str:
     def chat(req: httpx2.Request) -> httpx2.Response:
         body = json.loads(req.content)
@@ -472,7 +476,7 @@ def _cloud(client: TestClient, ctx: AppContext, pid: str) -> str:
                 "object": "chat.completion.chunk",
                 "created": 1,
                 "model": "gpt-x",
-                "choices": [{"index": 0, "delta": {"content": "Drafted text."}, "finish_reason": "stop"}],
+                "choices": [{"index": 0, "delta": {"content": SECTION_JSON}, "finish_reason": "stop"}],
             },
             {
                 "id": "c",
@@ -521,7 +525,7 @@ def test_budget_cap_blocks_and_stops_runs(client: TestClient, ctx: AppContext, r
     # A cap the estimate fits, then the price disappears mid-run: the run stops instead of spending blind.
     client.put(f"/api/projects/{pid}/brief", json={**BRIEF, "budget_cap": "50", "budget_currency": "USD"})
     run = client.post(f"/api/projects/{pid}/runs", json={**body, "client_request_id": rid()}).json()
-    assert len(run["job_ids"]) == 4 and run["budget_cap"] == "50"
+    assert len(run["plan_ids"]) == 4 and len(run["job_ids"]) == 1 and run["budget_cap"] == "50"
     price_id = client.get(f"/api/ai/providers/{cloud}/prices").json()[0]["id"]
     client.delete(f"/api/ai/providers/{cloud}/prices/{price_id}")
     runner.run_once()
@@ -532,7 +536,9 @@ def test_budget_cap_blocks_and_stops_runs(client: TestClient, ctx: AppContext, r
         and out["unknown_cost_calls"] == 1
     )
     statuses = [client.get(f"/api/ai/jobs/{j}").json()["status"] for j in run["job_ids"]]
-    assert statuses.count("succeeded") == 1 and statuses.count("cancelled") == 3
+    assert statuses == ["succeeded"]
+    plans = [client.get(f"/api/projects/{pid}/writing/plans/{x}").json() for x in run["plan_ids"]]
+    assert {p["status"] for p in plans} == {"cancelled"}
     assert runner.run_until_idle() == 0
 
 

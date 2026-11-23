@@ -13,6 +13,7 @@ from pbs_core.api.routes import api, health
 from pbs_core.api.routes_ai import router as ai_router
 from pbs_core.api.routes_knowledge import router as knowledge_router
 from pbs_core.api.routes_planning import router as planning_router
+from pbs_core.api.routes_writing import router as writing_router
 from pbs_core.config import Settings
 from pbs_core.context import AppContext, build_context
 from pbs_core.security.guard import LocalGuard
@@ -62,6 +63,7 @@ def create_app(
     app.include_router(ai_router)
     app.include_router(knowledge_router)
     app.include_router(planning_router)
+    app.include_router(writing_router)
     if ctx is not None:
         token = ctx.token
         app.add_middleware(

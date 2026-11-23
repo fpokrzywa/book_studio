@@ -168,6 +168,19 @@ $env:PBS_OPENAI_API_KEY = "<your key>"; apps\studio-core\.venv\Scripts\python.ex
   - **Outline**: ask AI for a proposal, or write your own. Reorder, nest, merge, split and lock entries, approve, then **Apply to manuscript** to create the chapters. Applying a changed outline never touches chapters with text.
   - **Draft chapters**: one chapter or the whole book from the approved outline. You see an estimate first, and runs respect your budget cap and chapter limit. Every chapter arrives as a suggestion for you to review.
 
+## Writing and reviewing (Phase 06)
+
+- **Drafting by section.** Plan → Draft chapters now drafts each chapter one outline section at a time.
+  - Each section prompt gets the brief, the local outline, summaries of earlier chapters, continuity notes, the style guide and source passages, trimmed to a token budget you set.
+  - Tick "Stop after each section" to review and edit every section before the next one.
+- **Write and review** (on the book page) has four tabs:
+  - **Drafts**: progress per section, what each prompt included, pause, resume, cancel, retry of a failed section, and the job history. A finished chapter arrives as one suggestion in the chapter.
+  - **Story bible and summaries**: continuity notes proposed by drafts (confirm or reject them) and chapter summaries (edit them).
+  - **Quality checks**: local checks for repeated phrases and paragraphs, uncited factual sentences, missing citations, outline differences, broken links, missing alt text, inconsistent terms, undefined acronyms and (fiction) continuity. You can also ask for an AI review. Mark each finding (needs a source, will fix, dismissed, fixed). These are hints, not proof.
+  - **Originality**: a local comparison with this book, your other books and this book's sources. No match does not prove originality.
+- **Editor actions.** In AI assist, select a passage and choose rewrite, expand, shorten, change tone, clearer, remove repetition, better transitions, explain, or exercises, quiz or glossary suggestions. You see the change word by word, and code and math are kept exactly.
+- **Lock against AI changes** in the chapter editor keeps AI drafts and suggestions out of a chapter.
+
 ## Sources, evidence, voice and interviews (Phase 04)
 
 - **Sources.** Open a book, then **Sources**, and add Markdown, text, HTML, Word or text-based PDF files. Each is kept unchanged and split into passages you can search; matched words are highlighted and every hit says why it matched. Turn **Use for AI** off to keep a source out of new AI suggestions, or **Remove** it. **Knowledge** in the menu holds shared libraries that books can opt in to.

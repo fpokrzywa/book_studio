@@ -135,6 +135,21 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
   - An unknown cost while a cap is set stops the run.
   - Bulk drafting needs an approved, applied outline. Its output is only ever proposals.
 
+## 7e. Phase 06 controls as built (details: ADR-0007)
+
+- **AI never overwrites the manuscript.**
+  - Section drafts are stored on the draft plan.
+  - A chapter changes only when the author accepts the single assembled suggestion.
+  - Locked or approved chapters are never drafted, and suggestions for them cannot be applied.
+- **Untrusted material stays data.** Brief, outline, earlier text, summaries, continuity notes, style guide and passages go to the model in random-tag envelopes. AI-extracted continuity notes are labelled unconfirmed until the author confirms them.
+- **Protected content.** Code and math in a selection are replaced by placeholders and restored byte for byte. A reply that alters them is discarded.
+- **No code execution.** Code checks parse Python and JSON only, run only when the author allows them for that book, and never execute code.
+- **No false assurance.**
+  - Quality checks and AI reviews say they are not proof of correctness.
+  - AI review findings are kept only if they quote the chapter.
+  - The originality report states its local scope and that no match is not proof of originality.
+- **Spending.** Every section job counts against the run's budget cap. A stopped run cancels its plans.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

@@ -6,12 +6,133 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **05: Project planning (wizard, brief, research, outline, skeleton, generation runs): COMPLETE (pending user review)** |
-| Next phase | 06 |
-| Branch | `phase/05-planning`, stacked on `phase/04-knowledge` (PR #4), then Phase 03 (PR #3), Phase 02 (PR #2) and Phase 01 (PR #1). Nothing merged yet. Phase 05 is not committed yet |
-| Schema | Alembic head `0006` (`0006_planning`). The dev workspace migrated 0005 → 0006 automatically, with a snapshot |
+| Current phase | **06: Writing pipeline (section-by-section drafts, editor actions, quality reviews, continuity, originality): COMPLETE (pending user review)** |
+| Next phase | 07 |
+| Branch | `phase/06-writing`, stacked on `phase/05-planning` (PR #5), then Phases 04, 03, 02 and 01 (PRs #4, #3, #2, #1). Nothing merged yet. Phase 06 is not committed yet |
+| Schema | Alembic head `0007` (`0007_writing`). The dev workspace migrates 0006 → 0007 automatically, with a snapshot |
 | Platforms verified | Windows 11 x64 only. macOS is **not executed** |
 | Last updated | 2026-11-22 |
+
+## Phase 06 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 145 files already formatted |
+| mypy `--strict` (112 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken |
+| pytest (Core) | **242 passed, 1 skipped, 3 xfailed**. The skip is the Ollama smoke test (no local Ollama). The xfails are golden steps owned by Phase 07 |
+| License gate | passed: 94 runtime dependencies (no new dependencies) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **40 passed** (1 new file, `Write.test.tsx`) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **15 passed** (2 new specs in `writing.spec.ts`) |
+| Migrations | `test_migrations.py`: fresh → head `0007`, head → head no-op, models ≡ migrations (no drift), older DB upgraded with a snapshot |
+
+### Prompt 06 acceptance → evidence
+
+| Acceptance item | Where it is proven |
+|---|---|
+| Generate a short 3-chapter test book, stop, resume, and inspect the draft job history | pytest `test_three_chapter_book_by_section_with_pause_resume_and_history`: wizard book with 3 chapters → AI outline (test model) → whole-book run → 3 plans of 2 sections; the first section is done, the draft is **paused** (the queued second section is cancelled and returns to pending; nothing runs), **resumed** (the finished section is not sent again) → all three chapters assembled into one suggestion each, no chapter changed. The history lists every attempt (`1. attempt 1 succeeded`, `2. attempt 1 cancelled (paused)`, `2. attempt 2 succeeded`) with provider, model, template, token usage and the job log ("Context for section 1 …", "stored on the draft plan (not in the chapter)"). Later chapters' prompts carry summaries of earlier ones. Playwright "Phase 06 acceptance": the same in the UI with the review gate (pause, resume, edit and approve each section, open the job history) |
+| Generated content does not supersede locked or approved material | `test_locked_and_approved_chapters_are_never_superseded`: an approved chapter with text and a locked chapter are skipped with reasons; a one-chapter run on the approved chapter and an AI request on the locked one are refused (409). A chapter locked **after** drafting: its suggestion is "not applicable" and Accept is refused; its revision count, and the approved chapter's text, are unchanged. Unlocking allows the accept (revision 1). Playwright: the locked "Tools" chapter is skipped and has no suggestion |
+| Mark and review at least two unsupported facts in test data | `test_unsupported_facts_are_marked_and_reviewed`: the fixture has two uncited factual sentences ("In 2019, 64% …", "Studies show … doubles …") and one cited paragraph; exactly the two are flagged. The author marks one "needs a source" (with a note) and dismisses the other; a re-run keeps both decisions (0 new). Citing the paragraph makes both "no longer found", with decisions kept. Playwright: two findings, decision set, still set after reload. Vitest: the decision is sent. The AI review path keeps only findings that quote the chapter (`test_ai_review_keeps_only_findings_quoted_from_the_chapter`: 1 kept, 1 invented quote dropped) |
+| Run an intentional repeated-paragraph check and verify a real finding | `test_repeated_paragraph_check_finds_a_real_duplicate`: the same 21-word paragraph in two chapters → one `duplicate_paragraph` warning with both locations (chapter 1 paragraph 1, chapter 2 paragraph 2) and the exact excerpt; a phrase used three times → a `repeated_phrase` finding with count 3. Playwright: the repeated paragraph is found in the UI ("The same paragraph appears 2 times") |
+| All tests, build and migration checks pass | the table above |
+
+### Other Phase 06 requirements → evidence
+
+| Requirement | Evidence |
+|---|---|
+| Draft by section with brief, local outline, prior chapter summaries, style guide, passages, story bible, targets and exclusions | `writing/memory.py`, `jobs/writing_prompts.section`; the context report per section; `test_three_chapter_book…` (summaries), `test_fiction_continuity_memory_and_checks` (continuity notes in the next chapter's prompt) |
+| Structured plan and per-section jobs; retry failed sections without rewriting successful ones; pause, cancel, resume; review gates | `draft_plan` / `draft_section`; `test_failed_section_is_retried_alone` (a finished section's retry is refused with 409; its text and single attempt are unchanged), `test_review_gate_lets_the_author_edit_each_section` |
+| Avoid context blowups: summaries, continuity memory, retrieval, explicit token budget | `test_token_budget_trims_context_and_reports_it` (a 600-paragraph chapter: "so far" trimmed, the end kept, used ≤ budget, prompt within budget) |
+| Task, provider and model provenance | per-section provenance, the suggestion's `pipeline` provenance, job history |
+| Draft only into a proposed revision | the assembled proposal; the chapter is unchanged until Accept (pytest and Playwright) |
+| Editor actions with diff + accept/reject | `test_editor_actions_keep_code_and_math_and_show_a_diff` (clarity → replacement with a word diff; quiz → inserted after the selection; explain → note; tone without wording → 422); Playwright (diff shown with `<del>`/`<ins>`) |
+| Quality reviews (grammar/style, repeated phrases, duplicates, unsupported claims, missing citations, outline/promise mismatch, broken links, alt text, terms, acronyms) | the tests above plus `test_links_alt_terms_acronyms_exclusions_and_gated_code_checks`; AI review for grammar and the reader's promise |
+| Fiction: chronology, traits, location/relationship consistency, unresolved threads, timeline updates | `test_fiction_continuity_memory_and_checks` (green vs brown eyes → conflict; event years out of order → chronology; open thread; rejecting a note clears the conflict) |
+| Technical: equations and code preserved; code checks only if authorised; unverified claims marked; AI review is not proof | protected placeholders (the test model dropping them → `invalid_output`, no suggestion); code checks skipped until allowed, then "the code was not run"; disclaimers in the API and UI |
+| Originality report states its scope | `test_originality_report_states_its_scope` (overlaps with another workspace book and a knowledge source; scope, "not covered", no external provider, "does not mean the text is original") |
+
+## Phase 06: what was built
+
+**Core**
+- Migration `0007_writing`: `draft_plan`, `draft_section`, `continuity_fact`, `chapter_summary`, `quality_finding`.
+- `writing/`:
+  - `pipeline.py`: queue a section, advance, assemble one proposal (with ledger claims, requirement check and summary), run ordering, cancel and stop;
+  - `context.py`: token-budget fit and report;
+  - `memory.py`: brief, local outline, chapter so far, earlier summaries, continuity notes;
+  - `protect.py`: code and math placeholders;
+  - `quality.py`: twelve local checks;
+  - `originality.py`: the local overlap report;
+  - `store.py`: finding upserts with stable fingerprints.
+- `jobs/writing_prompts.py` (section and review prompts, JSON schemas) and `jobs/writing_exec.py` (prepare at run time, parse, commit). Two new branches in `jobs/execute.py`, plus placeholder masking for revise and translate.
+- Phase 05 runs now create one draft plan per chapter, in order. Estimates count one model call per section within the token budget. Stopping a run cancels its plans.
+- Editor actions (`action` on AI requests); word-level diff on replacement proposals; `chapter.locked` settable by the author, which blocks requests and accepts.
+- `services/writing.py` and `api/routes_writing.py`: 20 new endpoints under `/api/projects/{id}/writing/…`.
+- The test model answers section and review requests, and has new markers `[[mock:fail_once]]`, `[[mock:conflict]]` and `[[mock:drop_code]]`.
+- Backup includes continuity notes, summaries and findings, with fingerprints recomputed on restore.
+
+**UI**
+- **Write and review** page (`/projects/:id/write`):
+  - **Drafts**: per-section state, context report, review-gate editor, pause, resume, cancel, retry, job history;
+  - **Story bible and summaries**: confirm, reject or resolve notes; add notes; edit summaries;
+  - **Quality checks**: run (book or chapter), code-check permission, AI review, findings grouped by check with decision and note, disclaimers;
+  - **Originality**: scope, not covered, statement, overlaps table.
+- **Plan → Draft chapters**: "Stop after each section", the token budget, section counts in the estimate, and a link to the drafts.
+- **AI assist**: an "Editor action on the selection" menu, an inline word diff on replacement suggestions, and a note when code or math was protected.
+- **Chapter editor**: "Lock against AI changes".
+- **Book page**: a "Write and review" link.
+
+**Docs:** ADR-0007; SECURITY §7e; DATA_MODEL §2.3c; ARCHITECTURE §7.4; TEST_PLAN §4.4c; README "Writing and reviewing (Phase 06)".
+
+## Decisions taken in Phase 06 (need your validation)
+
+| # | Decision | Why | Reversible? |
+|---|---|---|---|
+| P6-1 | Generation runs always draft by section; the Phase 05 one-call-per-chapter path is gone | The brief says "not a single giant prompt" | Yes |
+| P6-2 | Chapters in a run are drafted one after another, not in parallel | Each chapter can then use the previous chapter's summary | Yes |
+| P6-3 | Sections return JSON (text, summary, facts) | One call yields the text, the summary and the continuity updates | Yes (a separate summary call is possible) |
+| P6-4 | AI-extracted continuity notes are "proposed" until the author confirms; rejected ones are never sent | The author decides what is canon | Yes |
+| P6-5 | A new author-set `chapter.locked` flag also blocks accepting a suggestion | "Never overwritten automatically" made explicit | Yes |
+| P6-6 | Code and math are protected by placeholders; a reply that changes them is rejected, not repaired | Byte-for-byte preservation is guaranteed rather than hoped for | Yes |
+| P6-7 | Code checks parse only (Python, JSON), off by default per book | No safe execution sandbox exists here | Yes, add a sandbox later |
+| P6-8 | AI review uses the `revise` route, not a new task type | Avoids rebuilding the job table's CHECK constraint | Yes |
+| P6-9 | Draft plans and section history are not in book backups | Working records, like runs and job logs | Yes |
+
+## Known limitations (Phase 06, honest list)
+
+1. **Section JSON depends on the model following instructions.** Bad replies are retried three times, then the section fails visibly (retry it). Only the test model was exercised here.
+2. **Token counts are estimates** (four characters per token). A model with a context window smaller than the budget can still overflow; set the budget accordingly.
+3. **Summaries are the model's own** section summaries and are not checked against the text. You can edit them.
+4. **Continuity checks compare notes, not prose.** A trait changed only in the prose is caught only by an AI review or by you.
+5. **The quality rules are English-centric heuristics**: the fact-like sentence rules, acronyms and term variants over- and under-flag. Grammar is covered only by the AI review; style hints are minimal.
+6. **No code is executed.** Only Python and JSON are parsed.
+7. **The originality report is local** (this book, your other books, this book's sources). There is no web or published-works comparison, and no external provider ships.
+8. Drafting a chapter that already has text (one-chapter mode) appends the sections after the existing text.
+9. Real Ollama and cloud models remain unexercised (see Phase 03).
+10. My visual check ran the quality checks on “The Quiet Engine” in the dev workspace (`.pbs-data`, git-ignored). It found nothing, so no findings were stored.
+
+## Phase 06: bugs found and fixed
+
+- **Editor actions were applied twice** (in enqueue and again in planning), which moved the insertion point and rejected the request. Fixed by clearing the action after it is applied.
+- **The section review box stayed empty** when it had mounted before its section finished (visual/e2e check). It now starts from the finished text.
+- **The test model's failure marker leaked** into other sections through the outline text. It now matches only the section's own goal.
+- **The story-bible note form wrapped awkwardly** in three columns (visual check). It now uses rows of two.
+
+## Phase 07 handoff
+
+Preserve:
+- proposals as the only way AI text reaches a revision, and `chapter.locked`;
+- the section pipeline and its context report;
+- continuity notes and summaries as the source for cross-chapter context;
+- finding fingerprints and decisions;
+- the "not proof" disclaimers.
+
+Start Phase 07 (publishing) from accepted revisions only. Use quality findings (missing alt text, broken links, unresolved images, missing citations) as preflight inputs, and citation metadata from Phase 04 for bibliographies.
+
+---
 
 ## Phase 05 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
 
@@ -576,6 +697,11 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 06: Writing pipeline and reviews (2026-11-22)
+- Built as described in "Phase 06: what was built" on `phase/06-writing`.
+- Checked end to end with Playwright against the built-in test model: a three-chapter book drafted section by section with the review gate, paused and resumed, job history inspected, a locked chapter left untouched; quality checks and an editor action with a diff.
+- Checked by hand in the desktop browser pane (Write and review page).
 
 ### Phase 05: Project planning (2026-11-22)
 - Built as described in "Phase 05: what was built" on `phase/05-planning`.

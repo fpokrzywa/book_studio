@@ -11,6 +11,7 @@ rebuilt from the chunks. Author voice profiles are workspace-wide and are not pa
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from typing import Any
 
@@ -32,6 +33,8 @@ from pbs_core.storage.knowledge_models import (
 )
 from pbs_core.storage.models import Base, OriginalFile
 from pbs_core.storage.planning_models import BookBrief, OutlineVersion, ResearchFinding
+from pbs_core.storage.writing_models import ChapterSummary, ContinuityFact, QualityFinding
+from pbs_core.writing.quality import Finding
 
 RowFn = Callable[[Any], dict[str, Any]]
 
@@ -52,6 +55,9 @@ def collect(s: Session, project_id: str, row: RowFn) -> tuple[dict[str, list[dic
     brief = s.get(BookBrief, project_id)
     findings = s.scalars(select(ResearchFinding).where(ResearchFinding.project_id == project_id)).all()
     outlines = s.scalars(select(OutlineVersion).where(OutlineVersion.project_id == project_id)).all()
+    facts = s.scalars(select(ContinuityFact).where(ContinuityFact.project_id == project_id)).all()
+    summaries = s.scalars(select(ChapterSummary).where(ChapterSummary.project_id == project_id)).all()
+    q_findings = s.scalars(select(QualityFinding).where(QualityFinding.project_id == project_id)).all()
     tables = {
         "knowledge_library": [row(x) for x in libs],
         "source": [row(x) for x in sources],
@@ -64,6 +70,9 @@ def collect(s: Session, project_id: str, row: RowFn) -> tuple[dict[str, list[dic
         "book_brief": [row(brief)] if brief else [],
         "research_finding": [row(x) for x in findings],
         "outline_version": sorted((row(x) for x in outlines), key=lambda r: r["version_no"]),
+        "continuity_fact": sorted((row(x) for x in facts), key=lambda r: r["created_at"]),
+        "chapter_summary": sorted((row(x) for x in summaries), key=lambda r: r["created_at"]),
+        "quality_finding": sorted((row(x) for x in q_findings), key=lambda r: r["created_at"]),
     }
     return tables, originals
 
@@ -221,5 +230,24 @@ def restore(
             based_on_id=outline_map.get(r.get("based_on_id") or ""),
         )
         s.add(OutlineVersion(**kw))
+    # Writing (Phase 06): continuity memory, chapter summaries and quality findings with the author's
+    # decisions. Draft plans and their job history are not part of a book backup.
+    for r in rows("continuity_fact"):
+        kw = kwargs(ContinuityFact, r)
+        kw.update(id=new(), project_id=new_pid, plan_id=None, chapter_id=chapter_map.get(r.get("chapter_id") or ""))
+        s.add(ContinuityFact(**kw))
+    for r in rows("chapter_summary"):
+        if r["chapter_id"] not in chapter_map:
+            continue
+        kw = kwargs(ChapterSummary, r)
+        kw.update(id=new(), project_id=new_pid, plan_id=None, chapter_id=chapter_map[r["chapter_id"]])
+        s.add(ChapterSummary(**kw))
+    for r in rows("quality_finding"):
+        kw = kwargs(QualityFinding, r)
+        kw.update(id=new(), project_id=new_pid, chapter_id=chapter_map.get(r.get("chapter_id") or ""))
+        key = json.loads(r.get("details_json") or "{}").get("_key")
+        if key is not None:  # same fingerprint rule as the checks, with the restored chapter's ID
+            kw["fingerprint"] = Finding(r["check_code"], kw["chapter_id"], "info", "", None, key).fingerprint
+        s.add(QualityFinding(**kw))
     s.flush()
     return {"sources": len(source_map), "claims": len(claim_map), "answers": len(answer_map)}

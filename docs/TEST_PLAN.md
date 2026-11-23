@@ -123,6 +123,24 @@ Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `
 | Backup of planning data | `test_backup_restore_keeps_brief_findings_outlines_and_links` |
 | UI | Vitest `lib/outline.test.ts` (merge, split, nest, locks) and `Plan.test.tsx`; Playwright `planning.spec.ts` |
 
+### 4.4c Writing pipeline and reviews (Phase 06, as built)
+
+| Area | Tests |
+|---|---|
+| Three-chapter book by section; pause, resume; job history | `test_writing.py::test_three_chapter_book_by_section_with_pause_resume_and_history`; Playwright `writing.spec.ts` (with the review gate) |
+| Retry a failed section alone | `test_failed_section_is_retried_alone` |
+| Review gate with author edits | `test_review_gate_lets_the_author_edit_each_section`; Vitest `Write.test.tsx` |
+| Token budget and the context report | `test_token_budget_trims_context_and_reports_it` |
+| Locked and approved material never superseded | `test_locked_and_approved_chapters_are_never_superseded`; Playwright |
+| Editor actions, protected code and math, diff | `test_editor_actions_keep_code_and_math_and_show_a_diff`; Playwright |
+| Unsupported facts marked and reviewed (decisions persist) | `test_unsupported_facts_are_marked_and_reviewed`; Playwright; Vitest |
+| Repeated paragraph and phrase findings | `test_repeated_paragraph_check_finds_a_real_duplicate`; Playwright |
+| Links, alt text, terms, acronyms, exclusions, gated code checks | `test_links_alt_terms_acronyms_exclusions_and_gated_code_checks` |
+| Fiction continuity: memory, conflicts, chronology, threads | `test_fiction_continuity_memory_and_checks` |
+| AI review keeps only quoted findings | `test_ai_review_keeps_only_findings_quoted_from_the_chapter` |
+| Originality scope statement and overlaps | `test_originality_report_states_its_scope` |
+| Backup of notes, summaries and decisions | `test_backup_keeps_continuity_summaries_and_finding_decisions` |
+
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
 - Planning: unsupported market metrics are never produced (assert the schema has no such fields unless a licensed source is configured). An outline change preserves prose.

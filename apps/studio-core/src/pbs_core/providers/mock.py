@@ -64,6 +64,14 @@ class MockAdapter:
                 raise ProviderError(
                     "rate_limited", "The provider is rate-limiting requests.", retry_after=0.05, status=429
                 )
+        if "[[mock:fail_once]]" in prompt and (
+            "Section goal:" not in prompt or re.search(r"Section goal:[^\n]*\[\[mock:fail_once\]\]", prompt)
+        ):
+            with _lock:
+                _attempts["fail:" + key] = _attempts.get("fail:" + key, 0) + 1
+                first_fail = _attempts["fail:" + key] == 1
+            if first_fail:
+                raise ProviderError("model_error", "The test model failed on purpose (once).", status=500)
         planned = planning_answer(req.json_schema, prompt) if req.json_schema is not None else None
         if planned is not None:
             text = "not json" if "[[mock:bad_json]]" in prompt else planned
@@ -82,6 +90,10 @@ class MockAdapter:
                 f"{instruction[:120].rstrip('.')}. Reference {key}."
             )
             text = with_knowledge(text, prompt)
+            # Placeholders for protected code and math must come back unchanged (unless told to drop them).
+            keep = list(dict.fromkeys(re.findall(r"⟦KEEP-\d+⟧", prompt)))
+            if keep and "[[mock:drop_code]]" not in prompt:
+                text += " " + " ".join(keep)
         delay = 0.1 if "[[mock:slow]]" in prompt else 0.0
         out: list[str] = []
         for word in re.split(r"(\s+)", text):

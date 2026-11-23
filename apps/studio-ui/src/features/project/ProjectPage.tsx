@@ -161,6 +161,12 @@ function ProjectView({ project }: { project: Project }) {
                 <span className="muted">brief, research, outline and chapter drafting</span>
               </li>
               <li>
+                <Link to={`/projects/${project.id}/write`}>Write and review</Link>{" "}
+                <span className="muted">
+                  section-by-section drafts, story bible, quality checks, originality
+                </span>
+              </li>
+              <li>
                 <Link to={`/projects/${project.id}/knowledge`}>Sources</Link>{" "}
                 <span className="muted">reference files AI can quote and cite</span>
               </li>

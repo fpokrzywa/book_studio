@@ -15,6 +15,19 @@ AiTask = Literal["brainstorm", "research", "outline", "draft", "revise", "summar
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled", "interrupted"]
 ProposalStatus = Literal["pending", "accepted", "rejected", "stale"]
 ProposalMode = Literal["append", "replace_selection", "insert_at", "note"]
+EditorAction = Literal[
+    "rewrite",
+    "expand",
+    "shorten",
+    "tone",
+    "clarity",
+    "repetition",
+    "transitions",
+    "explain",
+    "exercises",
+    "quiz",
+    "glossary",
+]
 PrivacyMode = Literal["local_only", "cloud_allowed"]
 KeyStatus = Literal["stored", "env", "missing", "not_needed"]
 DeclaredCapability = Literal["unknown", "declared:true", "declared:false"]
@@ -213,6 +226,9 @@ class AiRequestIn(_Model):
     use_sources: bool = Field(True, description="Give the model passages from this book's enabled sources")
     use_interview: bool = Field(False, description="Give the model the author's interview answers")
     voice_profile_id: str | None = Field(None, description="Rewrite in this author's voice (style guide)")
+    action: EditorAction | None = Field(
+        None, description="An editor action; sets the task, placement and instruction (the instruction adds detail)"
+    )
     client_request_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,64}$")] = Field(
         description="Random ID chosen by the client; sending the same ID twice returns the same job"
     )
@@ -292,6 +308,12 @@ class ProposalOut(BaseModel):
     provenance: dict[str, Any]
     created_at: str
     decided_at: str | None
+    diff: list[DiffSegment] | None = Field(None, description="Word-level changes for a replacement")
+
+
+class DiffSegment(BaseModel):
+    op: Literal["equal", "delete", "insert"]
+    text: str
 
 
 class AcceptIn(_Model):

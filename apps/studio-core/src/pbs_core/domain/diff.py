@@ -79,3 +79,25 @@ def side_by_side(old: str, new: str) -> list[Row]:
                 else:
                     rows.append(Row("insert", None, rj + 1, [], [Segment(b[rj], True)]))
     return rows
+
+
+def inline(old: str, new: str) -> list[tuple[str, str]]:
+    """Word-level changes as (op, text) runs: equal, delete or insert, in reading order."""
+    ta, tb = _TOKEN.findall(old), _TOKEN.findall(new)
+    sm = difflib.SequenceMatcher(a=ta, b=tb, autojunk=False)
+    out: list[tuple[str, str]] = []
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == "equal":
+            out.append(("equal", "".join(ta[i1:i2])))
+            continue
+        if i2 > i1:
+            out.append(("delete", "".join(ta[i1:i2])))
+        if j2 > j1:
+            out.append(("insert", "".join(tb[j1:j2])))
+    merged: list[tuple[str, str]] = []
+    for kind, text in out:
+        if merged and merged[-1][0] == kind:
+            merged[-1] = (kind, merged[-1][1] + text)
+        elif text:
+            merged.append((kind, text))
+    return merged
