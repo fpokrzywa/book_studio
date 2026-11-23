@@ -1,0 +1,187 @@
+/*
+ * AI assist, review and settings. A suggestion is a proof slip laid on the page: set apart by a
+ * gilt rule and a sunk surface, so it never reads as part of the manuscript until accepted.
+ */
+.ai-assist {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--rule);
+  max-width: 52rem;
+}
+.ai-assist > h2 {
+  font-size: var(--step-2);
+  margin-bottom: var(--space-2);
+}
+.ai-assist h3 {
+  font-size: var(--step-1);
+  margin: var(--space-5) 0 var(--space-3);
+}
+.ai-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.ai-form .page-actions,
+.proposal .page-actions {
+  justify-self: start;
+}
+/* Instruction and suggestion boxes are prose, not the full-height manuscript editor. */
+.manuscript .ai-assist textarea {
+  font-family: var(--font-text);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  min-height: 5.5rem;
+  padding: var(--space-3) var(--space-4);
+}
+.data-table input[type="number"] {
+  width: 8rem;
+}
+.estimate {
+  font-size: var(--step--1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--leaf-sunk);
+  border-radius: var(--radius-m);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.review-pane {
+  display: grid;
+  gap: var(--space-4);
+}
+.proposal {
+  background: var(--leaf-sunk);
+  border-left: 4px solid var(--gilt);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+  padding: var(--space-4) var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+.proposal h4 {
+  font-size: var(--step-0);
+}
+.proposal header p {
+  font-size: var(--step--1);
+}
+.proposal .original {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-left: 2px solid var(--rule);
+  font-family: var(--font-text);
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--danger) 60%, transparent);
+}
+
+.ai-jobs ul {
+  list-style: none;
+  padding: 0;
+}
+.job-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.job-error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.provider {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  padding: var(--space-4) var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+.provider[data-enabled="false"] {
+  border-style: dashed;
+}
+.provider-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.provider-head h3 {
+  font-size: var(--step-1);
+}
+.provider details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.add-provider {
+  margin-top: var(--space-5);
+}
+.panel + .panel,
+.banner + .panel,
+.panel + .banner {
+  margin-top: var(--space-5);
+}
+
+.data-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--step--1);
+  margin: var(--space-3) 0;
+}
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.data-table thead th {
+  color: var(--ink-soft);
+}
+.data-table input,
+.data-table select {
+  max-width: 14rem;
+}
+.jobs-table tr[data-status="failed"] th,
+.jobs-table tr[data-status="interrupted"] th {
+  border-left: 3px solid var(--danger);
+}
+.job-log ol {
+  font-size: var(--step--1);
+  padding-left: var(--space-5);
+}
+.job-log li[data-level="error"] {
+  color: var(--danger);
+}
+.job-log li[data-level="warning"] {
+  color: var(--gilt);
+}
+.job-log time {
+  color: var(--ink-soft);
+  margin-right: var(--space-2);
+}
+.partial {
+  white-space: pre-wrap;
+  font-family: var(--font-text);
+  max-height: 16rem;
+  overflow: auto;
+}
+.totals {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.privacy-badge[data-sending="true"] {
+  background: var(--gilt-wash);
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .privacy-badge[data-sending="true"] svg {
+    animation: pbs-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes pbs-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

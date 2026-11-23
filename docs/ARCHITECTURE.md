@@ -98,7 +98,7 @@ book_studio/
   docs/
 ```
 
-**Contract rule:** Pydantic models in `pbs_core` are the API source of truth. The TS client and types in `packages/contracts` are generated from FastAPI's OpenAPI document (`openapi-typescript`). CI fails if the generated client is stale.
+**Contract rule:** Pydantic models in `pbs_core/contracts.py` are the API source of truth. As built, the OpenAPI document is committed at `apps/studio-ui/src/api/openapi.json`, and the TS types at `apps/studio-ui/src/api/schema.d.ts` are generated from it with `openapi-typescript` (`scripts/gen-api`). A separate `packages/contracts` package was unnecessary for one consumer. A backend test fails if the committed contract is stale.
 
 ## 3. Workspace boundaries
 
@@ -143,6 +143,15 @@ The full schema is in `DATA_MODEL.md §4`. Summary:
 - **Block-ID reconciliation**: on save, the new BDM's blocks are matched to the previous revision's blocks (explicit `{#id}` first, then exact content hash, then position + similarity). Matched blocks keep their IDs; new blocks get new ULIDs. Citations, annotations, evidence links and comments anchor to block IDs.
 - **Round-trip invariant** (tested on every fixture): `parse(serialize(parse(md))) == parse(md)` structurally, and `serialize(parse(md))` is idempotent after one normalization pass. Any node a renderer cannot represent raises a typed `FidelityWarning`, which is shown to the user and recorded in the export report.
 
+### 4.1 As built in Phase 02
+
+- **Editor:** CodeMirror 6 edits the BookMD source directly, with an optional plain-textarea mode. The preview is rendered by Core (`POST /api/projects/{id}/preview`) using the export renderer (ADR-0002).
+- **Autosave vs revisions:** typing autosaves after 1.5 s to `chapter_draft` (mutable, one per chapter, guarded by `base_revision_no`). Only Save (or restore/import) appends an immutable `chapter_revision`. A draft survives restarts and is offered back on reopen.
+- **History:** list, label and note (`revision_tag`), side-by-side diff with word-level highlights (`domain/diff.py`), and restore-as-new-revision (`origin=restored`).
+- **Tree:** `chapter.parent_id` (max depth 3: part > chapter > section) plus a fractional `position`. Moving a chapter changes only those two columns.
+- **Imports:** `importers/` (markdown, text, html, docx via mammoth → html, pdf via pypdf) are deterministic: the preview is exactly what commit creates. Commit re-runs the importer to obtain embedded images and refuses if the output differs.
+- **Backup/restore:** `services/backup.py`, ZIP `manifest/1`, restore into a new project with ID remapping (ARCHITECTURE §3 boundaries unchanged).
+
 ## 5. Export pipeline
 
 ```mermaid
@@ -179,6 +188,9 @@ Rules:
 - **Cancellation:** a cooperative flag checked between provider stream chunks and steps. In-flight HTTP is cancelled through an `httpx` task cancel. Status moves to `cancelled`; partial output is kept as a non-applicable draft for inspection.
 - **Progress:** stages (`preparing → calling_model → validating → saved`) plus counts (`3/12 sections`). No invented percentages.
 
+### 6.1 As built in Phase 03
+Threads, not asyncio: `jobs/runner.py` claims jobs in `BEGIN IMMEDIATE` and runs them in a bounded pool (2, and 1 per Ollama server). Leases are extended while text streams in. Startup recovery re-queues or marks `interrupted`. Cancellation uses an event plus a DB flag. Jobs are single-step (`job_step` is deferred to Phase 06). Exactly-once uses UNIQUE `proposal.job_id` plus a partial UNIQUE index on `chapter_revision.accepted_proposal_id`. Stages: `queued → preparing → calling_model → receiving → ready_for_review`, plus received-character counts. There are no percentages. See ADR-0004 §5.
+
 ## 7. Provider layer
 
 ```
@@ -194,6 +206,54 @@ ProviderAdapter (Protocol)
 - **Cost accounting:** `price_table` rows are user-maintained (`source_url`, `as_of`). Cost = usage × price when both are known. Otherwise the value is `null` and shows as "unknown". Pre-run estimates are labeled "estimate".
 - SDKs are verified against current official docs in Phase 03 (see ADR-0001 §4). Retries use exponential backoff with jitter on 429/5xx only. Every call has a timeout.
 
+### 7.1 As built in Phase 03
+Adapters (`providers/`): `mock`, `ollama` (REST), `openai` / `groq` / `xai` (official `openai` SDK, Chat Completions), `anthropic` (official SDK), `gemini` (REST). All share one `stream_chat(req, on_delta, should_cancel)` protocol. Structured output is native only when the capability is reported, documented or declared; the reply is always validated. Prices live in `model_price` per provider config and are user-entered. See ADR-0004.
+
+### 7.2 Knowledge layer (Phase 04)
+`pbs_core.knowledge` contains:
+- `extract`: importers to anchored paragraphs and chunks;
+- `search`: FTS5 index and search;
+- `retrieval`: eligible sources and interview answers for a book, at run time;
+- `citations`: marker check, passage locating, rewriting to `[@key, locator]`;
+- `voice`: deterministic style analysis.
+
+`jobs/execute.py` runs retrieval, builds prompts with envelopes, processes citations, and writes the proposal together with its ledger claims in one transaction. See ADR-0005.
+
+### 7.3 Planning layer (Phase 05)
+`pbs_core.planning` contains:
+- `outline`: tree validation, stable IDs, locks, totals;
+- `skeleton`: applies an approved outline to chapters without touching prose;
+- `research`: the market-metric guard;
+- `runs`: the budget stop and requirement checks.
+
+The Open Library adapter is `providers/research_adapters.py`. Planning jobs (outline, research brainstorm) reuse the job runner, with an executor branch in `jobs/planning_exec.py`. Chapter drafting from the outline goes through the normal chapter job path (`ai.enqueue` with run, node and requirements context). See ADR-0006.
+
+### 7.4 Writing layer (Phase 06)
+`pbs_core.writing` contains:
+- `pipeline`: queue, advance and assemble section-by-section draft plans; cancel; run integration;
+- `context`: the token-budget fit and its report;
+- `memory`: brief, local outline, chapter-so-far, earlier-chapter summaries, continuity notes;
+- `protect`: placeholders for code and math;
+- `quality`: the local checks;
+- `originality`: the local overlap report;
+- `store`: finding upserts.
+
+Section and review jobs run on the same job runner through `jobs/writing_exec.py`. Phase 05 generation runs now create one draft plan per chapter. See ADR-0007.
+
+### 7.5 Publishing layer (Phase 07)
+`pbs_core.publishing` contains:
+- `kdp_rules`: the versioned KDP specifications with source URLs;
+- `book`: assembly, templates, matter, numbering and citations;
+- `write_markdown`, `write_html`, `write_epub`, `write_docx` and `write_typst`: the writers (Typst gives the print PDF);
+- `latex_typst`: math conversion;
+- `fidelity`: export inspection;
+- `preflight`: the checks and the HTML report;
+- `cover`: print wrap, proof and eBook cover;
+- `metadata`;
+- `package`.
+
+`services/publishing.py` stores every build as a `publication` with its report and serves previews and files. See ADR-0008. Typst, python-docx and Pillow are runtime dependencies.
+
 ## 8. Frontend architecture
 
 - React 19 + TypeScript (strict) + Vite. React Router (declarative routes). TanStack Query for server state; no global client store unless needed.
@@ -205,7 +265,7 @@ ProviderAdapter (Protocol)
 ## 9. Error handling and logging
 
 - Core returns RFC 9457 `application/problem+json` with a stable `type` code. The UI maps codes to actionable messages. A top-level React error boundary plus per-route boundaries.
-- Logging: `structlog` JSON to `logs/`. A redaction processor scrubs known secret patterns (`sk-…`, `Bearer …`, `x-api-key`, `AIza…`, `gsk_…`) and any value whose key matches `/key|token|secret|password|authorization/i`. Manuscript text is **not logged** by default (only IDs, lengths and hashes).
+- Logging: `structlog` JSON to `logs/core.jsonl` (rotated at midnight, 14 kept). Uvicorn and other stdlib logs go through the same redacting formatter. A redaction processor scrubs known secret patterns (`sk-…`, `Bearer …`, `x-api-key`, `AIza…`, `gsk_…`) and any value whose key matches `/key|token|secret|password|authorization/i`. Manuscript text is **not logged** by default (only IDs, lengths and hashes).
 - The Activity log (user-facing) is a separate `activity_event` table holding human-readable, non-secret events.
 
 ## 10. Desktop packaging (Phase 10 preview)

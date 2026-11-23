@@ -1,0 +1,118 @@
+[project]
+name = "pbs-core"
+version = "0.1.0"
+description = "Personal Book Studio - local core service (loopback-only API)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.1",
+    "anthropic>=2.12.0",
+    "defusedxml>=0.7.1",
+    "fastapi>=0.165.0",
+    "keyring>=25.7.0",
+    "latex2mathml>=3.81.1",
+    "mammoth>=1.13.0",
+    "markdown-it-py>=4.3.0",
+    "mdit-py-plugins>=0.7.0",
+    "nh3>=0.3.8",
+    "openai>=3.57.0",
+    "pillow>=11",
+    "platformdirs>=4.14.8",
+    "pydantic>=2.14.4",
+    "pydantic-settings>=2.16.3",
+    "pypdf>=7.1.1",
+    "python-docx>=1.2.0",
+    "python-multipart>=0.0.34",
+    "sqlalchemy>=2",
+    "structlog>=26.1.0",
+    "typst>=0.13",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+pbs-core = "pbs_core.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pbs_core"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "hypothesis>=6.170.17",
+    "import-linter>=2.17",
+    "mypy>=2.4.1",
+    "pip-licenses>=5.5.5",
+    "pytest>=9.2.0",
+    "python-docx>=1.2.0",
+    "ruff>=0.17.6",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "ASYNC"]
+ignore = ["RUF001", "RUF002", "RUF003", "E501"]  # typographic quotes are intentional; the formatter owns line length
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "S607", "S108", "E501", "W291"]  # fixtures keep intentional trailing spaces
+"src/pbs_core/security/token.py" = ["S603", "S607"]
+"src/pbs_core/migrations/**" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/pbs_core"]
+exclude = ["src/pbs_core/migrations/"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["markdown_it.*", "mdit_py_plugins.*", "mammoth.*", "latex2mathml.*", "lxml", "lxml.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: spawns real Core processes",
+    "ollama: needs a running local Ollama server (skipped otherwise)",
+    "live: opt-in live cloud provider checks (PBS_LIVE_TESTS=1 and real keys)",
+]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecated"]
+
+[tool.importlinter]
+root_package = "pbs_core"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain and document layers stay pure (no web, DB or services)"
+type = "forbidden"
+source_modules = ["pbs_core.domain", "pbs_core.document"]
+forbidden_modules = ["fastapi", "starlette", "sqlalchemy", "pbs_core.api", "pbs_core.services", "pbs_core.storage"]
+
+[[tool.importlinter.contracts]]
+name = "Network clients only behind the egress gate (pbs_core.providers)"
+type = "forbidden"
+source_modules = [
+    "pbs_core.api", "pbs_core.services", "pbs_core.storage", "pbs_core.document", "pbs_core.domain",
+    "pbs_core.jobs", "pbs_core.security", "pbs_core.importers", "pbs_core.context", "pbs_core.config",
+]
+forbidden_modules = ["httpx", "httpx2", "requests", "urllib3", "aiohttp", "openai", "anthropic"]
+allow_indirect_imports = true  # e.g. services -> providers.registry -> (gated) httpx2 is the intended path
+
+[[tool.importlinter.contracts]]
+name = "Only httpx2 behind the gate: httpx, requests, urllib3 and aiohttp are never imported"
+type = "forbidden"
+source_modules = ["pbs_core"]
+forbidden_modules = ["httpx", "requests", "urllib3", "aiohttp"]
+
+[[tool.importlinter.contracts]]
+name = "Layering: api -> services -> storage/document/domain"
+type = "layers"
+layers = ["pbs_core.api", "pbs_core.services", "pbs_core.storage | pbs_core.document"]
