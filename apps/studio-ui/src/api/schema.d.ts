@@ -1474,6 +1474,211 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project_id}/publishing/build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Build */
+        post: operations["build_api_projects__project_id__publishing_build_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/cover-spec": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cover Spec */
+        get: operations["cover_spec_api_projects__project_id__publishing_cover_spec_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/covers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Build Covers */
+        post: operations["build_covers_api_projects__project_id__publishing_covers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/package": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Build Package */
+        post: operations["build_package_api_projects__project_id__publishing_package_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/preview/html": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Html */
+        get: operations["preview_html_api_projects__project_id__publishing_preview_html_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/preview/pdf-page/{page}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Pdf Page */
+        get: operations["preview_pdf_page_api_projects__project_id__publishing_preview_pdf_page__page__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["get_profile_api_projects__project_id__publishing_profile_get"];
+        /** Put Profile */
+        put: operations["put_profile_api_projects__project_id__publishing_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/publications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Publications */
+        get: operations["list_publications_api_projects__project_id__publishing_publications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Publication File */
+        get: operations["publication_file_api_projects__project_id__publishing_publications__pub_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/package-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Package File */
+        get: operations["package_file_api_projects__project_id__publishing_publications__pub_id__package_file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report */
+        get: operations["report_api_projects__project_id__publishing_publications__pub_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/report.html": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report Html */
+        get: operations["report_html_api_projects__project_id__publishing_publications__pub_id__report_html_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{project_id}/research/findings": {
         parameters: {
             query?: never;
@@ -2114,6 +2319,27 @@ export interface components {
             /** Summary */
             summary: string;
         };
+        /** AiDisclosureIn */
+        AiDisclosureIn: {
+            /**
+             * Images
+             * @default
+             * @enum {string}
+             */
+            images: "" | "none" | "assisted" | "generated";
+            /**
+             * Text
+             * @default
+             * @enum {string}
+             */
+            text: "" | "none" | "assisted" | "generated";
+            /**
+             * Translation
+             * @default
+             * @enum {string}
+             */
+            translation: "" | "none" | "assisted" | "generated";
+        };
         /** AiRequestIn */
         AiRequestIn: {
             /**
@@ -2237,6 +2463,24 @@ export interface components {
             report: {
                 [key: string]: unknown;
             };
+        };
+        /** ArtworkLicenseIn */
+        ArtworkLicenseIn: {
+            /**
+             * Confirmed
+             * @default false
+             */
+            confirmed: boolean;
+            /**
+             * License
+             * @default
+             */
+            license: string;
+            /**
+             * Source
+             * @default
+             */
+            source: string;
         };
         /** AssetOut */
         AssetOut: {
@@ -2542,6 +2786,20 @@ export interface components {
             /** Words Per Hour */
             words_per_hour: number;
         };
+        /** BuildIn */
+        BuildIn: {
+            /** Formats */
+            formats: ("markdown" | "html" | "epub" | "docx" | "pdf")[];
+        };
+        /** BuildOut */
+        BuildOut: {
+            /** Publications */
+            publications: components["schemas"]["PublicationOut"][];
+            /** Warnings */
+            warnings: {
+                [key: string]: string;
+            }[];
+        };
         /** CapabilityOut */
         CapabilityOut: {
             /** Detail */
@@ -2556,6 +2814,17 @@ export interface components {
             needed_from_phase: string;
             /** Purpose */
             purpose: string;
+        };
+        /** CategoryIn */
+        CategoryIn: {
+            /** Text */
+            text: string;
+            /**
+             * Verified
+             * @default false
+             * @constant
+             */
+            verified: false;
         };
         /** ChapterContentOut */
         ChapterContentOut: {
@@ -2810,6 +3079,35 @@ export interface components {
             /** Provider Label */
             provider_label: string;
         };
+        /** CopyrightIn */
+        CopyrightIn: {
+            /**
+             * Edition
+             * @default
+             */
+            edition: string;
+            /**
+             * Holder
+             * @default
+             */
+            holder: string;
+            /**
+             * Isbn
+             * @default
+             */
+            isbn: string;
+            /**
+             * Notice Md
+             * @description Your own notice; PBS writes none
+             * @default
+             */
+            notice_md: string;
+            /**
+             * Year
+             * @default
+             */
+            year: string;
+        };
         /** CorrectionIn */
         CorrectionIn: {
             /** After */
@@ -2827,6 +3125,99 @@ export interface components {
             before: string;
             /** Note */
             note: string | null;
+        };
+        /** CoverIn */
+        CoverIn: {
+            /** Artwork Asset */
+            artwork_asset?: string | null;
+            /**
+             * Artwork Fit
+             * @default front
+             * @enum {string}
+             */
+            artwork_fit: "front" | "wrap";
+            artwork_license?: components["schemas"]["ArtworkLicenseIn"];
+            /**
+             * Background
+             * @default #1f3a5f
+             */
+            background: string;
+            /** Layers */
+            layers?: components["schemas"]["CoverLayerIn"][];
+            /**
+             * Text Color
+             * @default #ffffff
+             */
+            text_color: string;
+        };
+        /** CoverLayerIn */
+        CoverLayerIn: {
+            /**
+             * Align
+             * @default center
+             * @enum {string}
+             */
+            align: "left" | "center" | "right";
+            /**
+             * Color
+             * @default
+             */
+            color: string;
+            /**
+             * Font
+             * @default Libertinus Serif
+             * @enum {string}
+             */
+            font: "Libertinus Serif" | "New Computer Modern" | "DejaVu Sans Mono";
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "title" | "subtitle" | "author" | "spine" | "back_text";
+            /**
+             * Size Pt
+             * @default 12
+             */
+            size_pt: number;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Weight
+             * @default regular
+             * @enum {string}
+             */
+            weight: "regular" | "bold";
+            /**
+             * Y
+             * @default 0.2
+             */
+            y: number;
+        };
+        /** CoverSpecOut */
+        CoverSpecOut: {
+            /**
+             * Based On Pdf
+             * @description The interior PDF whose final page count sized the cover
+             */
+            based_on_pdf: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Latest Cover
+             * @description The last print cover built, and whether it is stale
+             */
+            latest_cover: {
+                [key: string]: unknown;
+            } | null;
+            /** Message */
+            message: string;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            } | null;
         };
         /** DiffRow */
         DiffRow: {
@@ -3459,6 +3850,50 @@ export interface components {
              */
             structured_output: "unknown" | "declared:true" | "declared:false";
         };
+        /** MatterItemIn */
+        MatterItemIn: {
+            /**
+             * Body Md
+             * @default
+             */
+            body_md: string;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Include Story Bible Terms
+             * @default true
+             */
+            include_story_bible_terms: boolean;
+            /** Kind */
+            kind: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+        };
+        /** MetadataIn */
+        MetadataIn: {
+            /** Age Max */
+            age_max?: number | null;
+            /** Age Min */
+            age_min?: number | null;
+            ai_disclosure?: components["schemas"]["AiDisclosureIn"];
+            /** Categories */
+            categories?: components["schemas"]["CategoryIn"][];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Formats */
+            formats?: ("paperback" | "ebook")[];
+            /** Keywords */
+            keywords?: string[];
+        };
         /** ModelOut */
         ModelOut: {
             /**
@@ -3603,6 +4038,20 @@ export interface components {
             updated_at: string;
             /** Version No */
             version_no: number;
+        };
+        /** PackageOut */
+        PackageOut: {
+            /** Files */
+            files: {
+                [key: string]: unknown;
+            }[];
+            /** Folder */
+            folder: string;
+            publication: components["schemas"]["PublicationOut"];
+            /** Report Summary */
+            report_summary: {
+                [key: string]: number;
+            };
         };
         /** PlanChapterOut */
         PlanChapterOut: {
@@ -3765,6 +4214,17 @@ export interface components {
              */
             use_sources: boolean;
         };
+        /** PreviewHtmlOut */
+        PreviewHtmlOut: {
+            /** Html */
+            html: string;
+            /** Identical To Last Export */
+            identical_to_last_export: boolean | null;
+            /** Note */
+            note: string;
+            /** Sha256 */
+            sha256: string;
+        };
         /** PreviewIn */
         PreviewIn: {
             /** Source Md */
@@ -3854,6 +4314,88 @@ export interface components {
             title: string;
             /** Type */
             type: string;
+        };
+        /** ProfileIn */
+        ProfileIn: {
+            copyright?: components["schemas"]["CopyrightIn"];
+            cover?: components["schemas"]["CoverIn"];
+            /** Index Terms */
+            index_terms?: string[];
+            /**
+             * Ink Paper
+             * @enum {string}
+             */
+            ink_paper: "bw_white" | "bw_cream" | "bw_groundwood" | "standard_color_white" | "premium_color_white";
+            /** Matter */
+            matter: components["schemas"]["MatterItemIn"][];
+            metadata?: components["schemas"]["MetadataIn"];
+            /**
+             * Template
+             * @enum {string}
+             */
+            template: "technical_manual" | "nonfiction" | "novel" | "workbook";
+            /** Trim */
+            trim: string;
+        };
+        /** ProfileOut */
+        ProfileOut: {
+            /** Ai Evidence */
+            ai_evidence: {
+                [key: string]: unknown;
+            };
+            /** Copyright */
+            copyright: {
+                [key: string]: unknown;
+            };
+            /** Cover */
+            cover: {
+                [key: string]: unknown;
+            };
+            /** Index Terms */
+            index_terms: string[];
+            /**
+             * Ink Paper
+             * @enum {string}
+             */
+            ink_paper: "bw_white" | "bw_cream" | "bw_groundwood" | "standard_color_white" | "premium_color_white";
+            /** Matter */
+            matter: {
+                [key: string]: unknown;
+            }[];
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Options
+             * @description Templates, trims, ink/paper choices, matter kinds, fonts
+             */
+            options: {
+                [key: string]: unknown;
+            };
+            /**
+             * Rules
+             * @description KDP rule-set version, checked-on date, source URLs, known gaps
+             */
+            rules: {
+                [key: string]: unknown;
+            };
+            /**
+             * Template
+             * @enum {string}
+             */
+            template: "technical_manual" | "nonfiction" | "novel" | "workbook";
+            /**
+             * Tools
+             * @description What is installed: Typst, EPUBCheck, image generation
+             */
+            tools: {
+                [key: string]: unknown;
+            };
+            /** Trim */
+            trim: string;
+            /** Updated At */
+            updated_at: string | null;
         };
         /** ProjectCreate */
         ProjectCreate: {
@@ -4081,6 +4623,47 @@ export interface components {
             enabled?: boolean | null;
             /** Label */
             label?: string | null;
+        };
+        /** PublicationOut */
+        PublicationOut: {
+            /** Byte Size */
+            byte_size: number | null;
+            /** Created At */
+            created_at: string;
+            /** Error */
+            error: string | null;
+            /** Fidelity */
+            fidelity: string | null;
+            /** File Name */
+            file_name: string | null;
+            /** Id */
+            id: string;
+            /** Ink Paper */
+            ink_paper: string;
+            /** Kind */
+            kind: string;
+            /** Package Id */
+            package_id: string | null;
+            /** Page Count */
+            page_count: number | null;
+            /** Report Summary */
+            report_summary: {
+                [key: string]: number;
+            };
+            /** Ruleset */
+            ruleset: string;
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+            /** Sha256 */
+            sha256: string | null;
+            /** Status */
+            status: string;
+            /** Template */
+            template: string;
+            /** Trim */
+            trim: string;
         };
         /** QualityFindingOut */
         QualityFindingOut: {
@@ -13385,6 +13968,1015 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    build_api_projects__project_id__publishing_build_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cover_spec_api_projects__project_id__publishing_cover_spec_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverSpecOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    build_covers_api_projects__project_id__publishing_covers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    build_package_api_projects__project_id__publishing_package_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_html_api_projects__project_id__publishing_preview_html_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewHtmlOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    preview_pdf_page_api_projects__project_id__publishing_preview_pdf_page__page__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "image/png": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_profile_api_projects__project_id__publishing_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    put_profile_api_projects__project_id__publishing_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list_publications_api_projects__project_id__publishing_publications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicationOut"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    publication_file_api_projects__project_id__publishing_publications__pub_id__file_get: {
+        parameters: {
+            query?: {
+                inline?: boolean;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                pub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    package_file_api_projects__project_id__publishing_publications__pub_id__package_file_get: {
+        parameters: {
+            query: {
+                name: string;
+                inline?: boolean;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                pub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    report_api_projects__project_id__publishing_publications__pub_id__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                pub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    report_html_api_projects__project_id__publishing_publications__pub_id__report_html_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                pub_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["Problem"];
                 };
             };
         };

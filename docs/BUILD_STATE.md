@@ -6,12 +6,142 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **06: Writing pipeline (section-by-section drafts, editor actions, quality reviews, continuity, originality): COMPLETE (pending user review)** |
-| Next phase | 07 |
-| Branch | `phase/06-writing`, stacked on `phase/05-planning` (PR #5), then Phases 04, 03, 02 and 01 (PRs #4, #3, #2, #1). Nothing merged yet. Phase 06 is not committed yet |
-| Schema | Alembic head `0007` (`0007_writing`). The dev workspace migrates 0006 → 0007 automatically, with a snapshot |
+| Current phase | **07: Publishing (assembly, templates, five exports, covers, preflight, metadata, KDP package): COMPLETE (pending user review)** |
+| Next phase | 08 |
+| Branch | `phase/07-publishing`, stacked on `phase/06-writing` (PR #6), then Phases 05 to 01 (PRs #5 to #1). Nothing merged yet. Phase 07 is not committed yet |
+| Schema | Alembic head `0008` (`0008_publishing`). The dev workspace migrates 0007 → 0008 automatically, with a snapshot |
+| KDP rule set | `kdp-paperback-2026-11-22` (sources and checked-on date in ADR-0008 and in the app) |
 | Platforms verified | Windows 11 x64 only. macOS is **not executed** |
 | Last updated | 2026-11-22 |
+
+## Phase 07 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 165 files already formatted |
+| mypy `--strict` (130 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken |
+| pytest (Core) | **255 passed, 1 skipped**. The skip is the Ollama smoke test (no local Ollama). **No expected failures remain**: golden steps 11–13 now run |
+| License gate | passed: 98 runtime dependencies (new: `typst` Apache-2.0, `pillow` MIT-CMU, `python-docx` MIT moved from dev to runtime) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **43 passed** (1 new file, `Publish.test.tsx`) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **16 passed** (new `publishing.spec.ts`) |
+| Migrations | head `0008`; fresh → head, head → head no-op, models ≡ migrations, upgrade with a snapshot |
+
+### KDP specifications used (fetched and read 2026-11-22)
+Rule set **`kdp-paperback-2026-11-22`** in `pbs_core/publishing/kdp_rules.py`. It is shown in the UI and in every report. The sources are listed with what each one supplied in ADR-0008:
+- GVBQ3CMEQW3W2VL6 (trim, bleed, margins);
+- G202145060 (print manuscript);
+- G202187850 and G201953020 (print cover);
+- G5HDYGP4BXLX4RUW (barcodes);
+- G202131170 (Kindle Previewer);
+- G200645690 (eBook cover);
+- G200672390 (content and AI guidelines);
+- G201298500 and G201097560 (keywords, metadata).
+
+Not published by KDP (reported as manual checks, never invented): the exact barcode position, hardcover wraps, and a per-keyword character limit.
+
+### Prompt 07 acceptance → evidence
+
+| Acceptance item | Where it is proven |
+|---|---|
+| Export a fixture with 3 chapters, tables, images, math, code and citations to all five primary formats | `test_fixture_exports_to_all_five_formats_and_each_is_inspected`: Markdown, HTML, EPUB, DOCX and print PDF built from one assembly; a second build gives byte-identical HTML/EPUB/DOCX/PDF; a report is saved beside every file. Playwright `publishing.spec.ts` builds all five from the UI (no image there). Golden step 11 |
+| Programmatically inspect PDF size, EPUB contents and DOCX paragraphs/styles | Same test. **PDF** (pypdf): every page 432 × 648 pt (6 × 9 in), page count = recorded count, `/Lang en`, not encrypted, all fonts embedded, chapter titles, caption numbers, the printed link address and citation in the text. **EPUB** (zipfile + lxml): `mimetype` first and stored, `dc:title`/`dc:language`, MathML accessibility feature, nav, 3 chapter files, alt text on the image, MathML, the cross-chapter link rewritten to `chapter-001.xhtml#fuel-and-air-tbl-mix`, numbered caption. **DOCX** (python-docx): Heading 1 chapter order, styles `PBS Code`/`PBS Equation`/`Caption`/`Title`, the code line in `PBS Code`, 2 tables, picture `descr` = alt text, external hyperlink relationship. Fidelity: Markdown/HTML/EPUB ok; DOCX "degraded" (equations kept as LaTeX source), PDF "degraded" (links printed as addresses); nothing missing |
+| A print cover recalculates after the final PDF page count changes | `test_print_cover_recalculates_when_the_final_page_count_changes`: no cover without a PDF (409). With the first PDF (N pages): spine = N × 0.002252 in, and the cover PDF width equals the spec. The chapter grows → the new PDF has more pages → the cover spec follows the new PDF, the full width grows, the old cover is flagged stale ("build it again"). Building again gives a PDF of the new width, linked to the new interior. The eBook cover is 1600 × 2560 px. Playwright: the cover tab says it is sized from the final page count, and builds |
+| Validate EPUB via an available tool or mark "validation unavailable", never "passed" | `test_epub_validation_is_unavailable_never_passed_without_epubcheck`: without EPUBCheck → "unavailable … This is not a pass"; with a validator that exits 1 → "fail" with its output. On this machine EPUBCheck is not installed, so every report says "unavailable" (Playwright checks the row in the report) |
+| Produce and open the sample publish package and preflight report | `test_publish_package_has_everything_and_publishes_nothing`: the folder holds book exports (MD zip, HTML, EPUB, DOCX, interior PDF), the print cover, proof and eBook cover, `metadata.json`/`.txt`, `preflight-report.json`/`.html`, `COPYRIGHT-AND-LICENSES.txt`, `SOURCES.txt`, `KDP-UPLOAD-STEPS.md` and `manifest.json` (SHA-256 per file, `auto_publish: false`); the report opens inline; the ZIP downloads. Playwright builds the package in the UI and **opens the preflight report** (disclaimer, EPUBCheck unavailable, page count below KDP's 24-page minimum shown as a fail). Also opened by hand in the desktop browser pane |
+
+### Other Phase 07 requirements → evidence
+
+| Requirement | Evidence |
+|---|---|
+| Configurable front and back matter; no fabricated ISBN, copyright, endorsements or legal statements | 18 matter kinds (ADR-0008 §2). `test_front_matter_never_invents_legal_text_or_isbn`: with nothing entered, the copyright page is left out and reported; no "All rights reserved", "ISBN" or "Copyright ©" in the output; an invalid ISBN check digit → 422; a valid ISBN becomes the EPUB identifier |
+| Interior templates (trim, fonts/licensing, heads/feet, chapter openings, page numbers, TOC, mirrored margins, images, numbering, code/math) | `publishing/book.TEMPLATES` (4) and `write_typst`. Font licenses are in every package. The gutter is raised to KDP's minimum for the final page count. Code-overflow and equation-as-source checks |
+| Live HTML reading preview and print preview; warn if not byte-identical | `test_previews_say_whether_they_match_the_export` (no export yet → null; after export → identical; after an edit → "Not identical…"); the PDF page preview says it is a page image, not the PDF file. Vitest and Playwright |
+| Round-trip fidelity; never silently omit | `publishing/fidelity.py`; `test_unsupported_math_is_printed_as_source_and_reported` |
+| Cover designer: licensed artwork or configured generator; editable typography; wrap and eBook covers; barcode, bleed and spine constraints; manual-check warnings | `test_cover_artwork_needs_rights_and_its_resolution_is_checked` (rights confirmation required; a 60 × 90 px artwork fails the 300 DPI check; barcode area "manual"). No image generation provider exists, and the UI says so |
+| Preflight (PDF dims/count, bleed/margins/gutter, fonts, image DPI, language, missing assets, overflow, cover dims, EPUB nav/metadata/links, DOCX validity, EPUBCheck) and a saved report per export | `publishing/preflight.py`; reports saved beside files and in `publication.report_json` |
+| Metadata handoff (title, author, description, 7 keywords, unverified categories, age, language, format, AI checklist) | `test_metadata_handoff_checks` (8 keywords or 4 categories → 422; URL in the description → fail; "bestseller" or a title repeat in keywords → warn; categories → manual; AI questions unanswered → warn) |
+| Package with exports, covers, metadata, report, license notes, sources and manual upload steps; no auto-publish | as above; `KDP-UPLOAD-STEPS.md` states PBS publishes nothing and that preflight is not approval |
+| MOBI/AZW3 optional only | not built (no converter installed; KDP takes EPUB); stated in the UI and the profile `tools` |
+
+## Phase 07: what was built
+
+**Core**
+- Migration `0008_publishing`: `publishing_profile` and `publication`.
+- `publishing/`:
+  - `kdp_rules` (versioned specs and sources), `book` (assembly, templates, matter, numbering, citations);
+  - writers `write_markdown`, `write_html`, `write_epub`, `write_docx`, `write_typst`, and `latex_typst`;
+  - `fidelity`, `preflight`, `cover`, `metadata`, `package`.
+- `services/publishing.py` and `api/routes_publishing.py`: profile, build, cover spec, covers, package, publications, reports (JSON and HTML), files (download or inline), package files, HTML preview and PDF page preview.
+- New runtime dependencies: `typst`, `pillow`, `python-docx`.
+
+**UI**
+- **Publishing** in the main menu (the last "not yet implemented" item is gone).
+- **Publish** page per book with five tabs: Book setup, Store details, Cover, Build and preview, Publish package.
+- A "Publish" link on the book page.
+
+**Docs:**
+- ADR-0008, and ADR-0003 marked accepted (Typst).
+- SECURITY §7f, DATA_MODEL §2.3d, ARCHITECTURE §7.5, TEST_PLAN §4.4d.
+- README "Publishing (Phase 07)".
+
+## Decisions taken in Phase 07 (need your validation)
+
+| # | Decision | Why | Reversible? |
+|---|---|---|---|
+| P7-1 | Typst (Python wheel) is the print-PDF engine; no WeasyPrint or Pandoc | Works offline on this machine, deterministic, embeds fonts, tagged PDF (ADR-0003 spikes) | Costly later |
+| P7-2 | Own EPUB and DOCX writers instead of Pandoc | Pandoc is not installed, and the writers share PBS's numbering and citations | Yes |
+| P7-3 | Fonts limited to Typst's built-in, freely licensed set | Reproducible builds, licenses known; no system fonts | Yes (bundle more OFL fonts) |
+| P7-4 | DOCX equations as LaTeX text; footnotes as chapter-end notes | No reliable native Word-equation path here; reported as "degraded" | Yes |
+| P7-5 | The print PDF has no live links or bookmarks; links print their address | KDP asks for no annotations or bookmarks in print files | Yes |
+| P7-6 | No interior bleed; paperback covers only | Nothing in PBS needs edge-to-edge interior art; hardcover wraps are not published by KDP | Yes |
+| P7-7 | The barcode area is reserved bottom-right of the back cover (2 × 1.2 in, 0.25 in in) and marked "check manually" | KDP gives the size and margins but not the position | Yes |
+| P7-8 | Covers are RGB; CMYK conversion is not done | No colour-managed conversion available; a printed proof is the real check | Yes |
+| P7-9 | The copyright page appears only with author-entered details | "Do not fabricate legal statements" | Yes |
+| P7-10 | Preflight statuses include "manual" and "unavailable", and these never count as pass | Honest reporting | No (by design) |
+
+## Known limitations (Phase 07, honest list)
+
+1. **EPUBCheck is not installed here**, so EPUB validation is "unavailable" in every report. PBS's own EPUB checks (container, metadata, manifest, nav, XHTML, links, alt text, accessibility metadata) did run. Kindle Previewer is a manual step.
+2. **PDFs are not PDF/X-1a, and colours are RGB.** Fonts are embedded as subsets (KDP recommends full embedding). Each is reported as a warning or manual check.
+3. **DOCX:** equations are LaTeX text, the table of contents is a Word field (update it in Word), and footnotes are chapter-end notes.
+4. **The LaTeX → Typst converter covers a subset.** Other equations print as LaTeX source and are reported.
+5. **Text overflow is checked for code lines only** (by character width). Long unbreakable words or URLs in body text are not measured.
+6. **No hardcover**, no interior bleed, no spot colours, no MOBI/AZW3.
+7. **The KDP rules are a snapshot from 2026-11-22.** The package tells the author to compare with the live pages and KDP's cover calculator.
+8. **Images inside chapters** are capped at 300 DPI print size, so small images print small rather than blurry.
+9. Real Ollama and cloud models remain unexercised (see Phase 03).
+10. My visual check built a publish package for “The Quiet Engine” in the dev workspace (`.pbs-data`, git-ignored) and opened its preflight report and eBook cover in the desktop browser pane.
+
+## Phase 07: bugs found and fixed
+
+- **Blank left-hand pages** before chapters showed a running head and page number (visual check of the first PDF); they are now clean.
+- **A bibliography label** inside a Typst list made layout fail; print bibliographies no longer carry labels. Layout failures are now reported as a clear 409, not a 500.
+- **Cross-chapter links** were not resolved, and EPUB file links were rendered as "unsafe" text. Anchors now resolve across chapters, and links between the book's own files are allowed.
+- **PDF bytes changed between identical builds** (Typst used the current time). The PDF date now comes from the book's last revision.
+- **The accessibility scan hung** on the sandboxed reading-preview iframe (test tooling); the iframe is excluded from the scan.
+- **The package folder path ran off the page** on narrow windows (visual check); it now wraps.
+- **A Phase 03 UI test was flaky under full-suite load** (a 5-second announcement could clear before it was checked); it now waits for the announcement right after the click.
+
+## Phase 08 handoff
+
+Preserve:
+- `publication` rows and reports, the rule-set versioning, and `cover_spec` from the final page count;
+- "unavailable" and "manual" never counting as pass;
+- no auto-publish.
+
+Next candidates:
+- bundle more OFL fonts;
+- a colour-managed CMYK cover path;
+- EPUBCheck in CI;
+- PDF/X;
+- hardcover once KDP's specifications are checked.
+
+---
 
 ## Phase 06 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
 
@@ -697,6 +827,11 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 07: Publishing (2026-11-22)
+- Built as described in "Phase 07: what was built" on `phase/07-publishing`.
+- The KDP help pages were fetched and read on 2026-11-22 before the rules were written (ADR-0008 lists them).
+- Checked end to end with Playwright (build all formats, previews, covers, package, open the preflight report) and by hand in the desktop browser pane (package tab, preflight report, eBook cover). The first print PDF was also inspected as page images.
 
 ### Phase 06: Writing pipeline and reviews (2026-11-22)
 - Built as described in "Phase 06: what was built" on `phase/06-writing`.

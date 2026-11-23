@@ -202,6 +202,23 @@ Indexes: `(status, updated_at)`. Library search (as built) is a case-folded subs
 - **`chapter.locked`** (from Phase 01) is now set by the author ("Lock against AI changes").
 - App setting `code_check_authorized:<project_id>` records whether code checks are allowed for that book.
 
+### 2.3d Phase 07 tables as built (migration `0008`, ADR-0008)
+
+- **`publishing_profile`** (one per book):
+  - `template` (technical_manual, nonfiction, novel or workbook), `trim`, `ink_paper`;
+  - `matter_json`: front and back matter items (kind, enabled, title, Markdown);
+  - `copyright_json`: holder, year, edition, ISBN, notice (author-entered only);
+  - `metadata_json`: description, up to 7 keywords, up to 3 unverified categories, age range, formats, AI disclosure;
+  - `cover_json`: colours, artwork asset and its license confirmation, typography layers;
+  - `index_terms_json`.
+- **`publication`** (every build):
+  - `kind` (markdown, html, epub, docx, pdf, cover_print, cover_proof, cover_ebook or package), `status`, `package_id`;
+  - file name, path, SHA-256, size, `page_count`;
+  - template, trim, ink/paper and the KDP `ruleset`;
+  - the chapter revision set;
+  - `settings_json`: cover spec, the interior publication it was sized from, gutter and layout passes;
+  - `report_json`: preflight items and fidelity rows.
+
 ### 2.4 Phase 04–08 tables (design intent)
 
 - **Knowledge:** `knowledge_library (id, scope project|shared, project_id nullable, name)`, `project_library_link`, `knowledge_source (id, library_id, kind file|url|interview, title, uri, original_file_id, retrieved_at, content_sha256, enabled, tags_json, index_status)`, `source_chunk (id, source_id, ordinal, text, heading_path, page_from, page_to, char_start, char_end, sha256)` (immutable), `source_chunk_fts` (FTS5, external content), `chunk_embedding (chunk_id, model, dim, vector BLOB)` (optional).

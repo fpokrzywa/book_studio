@@ -161,6 +161,10 @@ function ProjectView({ project }: { project: Project }) {
                 <span className="muted">brief, research, outline and chapter drafting</span>
               </li>
               <li>
+                <Link to={`/projects/${project.id}/publish`}>Publish</Link>{" "}
+                <span className="muted">EPUB, DOCX, print PDF, covers, preflight and the KDP package</span>
+              </li>
+              <li>
                 <Link to={`/projects/${project.id}/write`}>Write and review</Link>{" "}
                 <span className="muted">
                   section-by-section drafts, story bible, quality checks, originality

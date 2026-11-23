@@ -1,6 +1,6 @@
 import type { RouteObject } from "react-router";
 import { Link } from "react-router";
-import { NotAvailable, PageHeader } from "../components/Misc";
+import { PageHeader } from "../components/Misc";
 import { ActivityPage } from "../features/activity/ActivityPage";
 import { AiSettingsPage } from "../features/ai/AiSettingsPage";
 import { JobsPage } from "../features/ai/JobsPage";
@@ -10,6 +10,7 @@ import { InterviewPage } from "../features/knowledge/InterviewPage";
 import { KnowledgePage } from "../features/knowledge/KnowledgePage";
 import { SourcePage } from "../features/knowledge/SourcePage";
 import { VoicePage } from "../features/knowledge/VoicePage";
+import { PublishingHome, PublishPage } from "../features/publishing/PublishPage";
 import { WritePage } from "../features/writing/WritePage";
 import { PlanPage } from "../features/planning/PlanPage";
 import { ChapterEditorPage } from "../features/editor/ChapterEditorPage";
@@ -53,16 +54,8 @@ export const routes: RouteObject[] = [
       { path: "voice", element: <VoicePage /> },
       { path: "activity", element: <ActivityPage /> },
       { path: "help", element: <HelpPage /> },
-      {
-        path: "publishing",
-        element: (
-          <NotAvailable
-            feature="Publishing"
-            phase="07"
-            what="EPUB, DOCX and print PDF exports, covers, preflight checks and the KDP handoff package."
-          />
-        ),
-      },
+      { path: "publishing", element: <PublishingHome /> },
+      { path: "projects/:projectId/publish", element: <PublishPage /> },
       { path: "ai-settings", element: <AiSettingsPage /> },
       { path: "jobs", element: <JobsPage /> },
       { path: "*", element: <NotFound /> },

@@ -18,7 +18,7 @@ def test_fresh_workspace_migrates_to_head_without_snapshot(workspace: Path) -> N
     ctx = build_context(make_settings(workspace))
     try:
         assert ctx.migration.from_revision is None
-        assert ctx.schema_revision == head_revision() == "0007"
+        assert ctx.schema_revision == head_revision() == "0008"
         assert ctx.migration.snapshot_path is None
     finally:
         ctx.close()
@@ -66,7 +66,7 @@ def test_upgrade_from_0001_preserves_content_and_snapshots(workspace: Path) -> N
 
     ctx = build_context(make_settings(workspace))
     try:
-        assert ctx.migration.from_revision == "0001" and ctx.schema_revision == "0007"
+        assert ctx.migration.from_revision == "0001" and ctx.schema_revision == "0008"
         snap = ctx.migration.snapshot_path
         assert snap is not None and snap.exists()
         with sqlite3.connect(snap) as s:  # snapshot holds the pre-migration data

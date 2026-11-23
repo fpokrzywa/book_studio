@@ -79,16 +79,13 @@ describe("LibraryPage", () => {
     expect(await screen.findByRole("link", { name: "The Quiet Engine" })).toBeInTheDocument();
   });
 
-  it("labels later-phase navigation as disabled, not as working links", async () => {
+  it("shows every phase's sections as working links, with nothing marked not yet implemented", async () => {
     mockApi({ ...common, "GET /api/projects": () => ({ json: { items: [], total: 0 } }) });
     renderRoutes(routes, "/");
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    for (const name of ["Publishing"]) {
-      expect(within(nav).queryByRole("link", { name: new RegExp(name) })).toBeNull();
-      const item = within(nav).getByText(name);
-      expect(item.closest("[aria-disabled='true']")).not.toBeNull();
-    }
-    expect(within(nav).getAllByText(/Not yet implemented/)).toHaveLength(1);
+    // Phase 07: Publishing is a real section now.
+    expect(within(nav).getByRole("link", { name: "Publishing" })).toBeInTheDocument();
+    expect(within(nav).queryByText(/Not yet implemented/)).toBeNull();
     // Phase 03 sections are real links now.
     expect(within(nav).getByRole("link", { name: "AI settings" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "AI jobs" })).toBeInTheDocument();

@@ -181,6 +181,17 @@ $env:PBS_OPENAI_API_KEY = "<your key>"; apps\studio-core\.venv\Scripts\python.ex
 - **Editor actions.** In AI assist, select a passage and choose rewrite, expand, shorten, change tone, clearer, remove repetition, better transitions, explain, or exercises, quiz or glossary suggestions. You see the change word by word, and code and math are kept exactly.
 - **Lock against AI changes** in the chapter editor keeps AI drafts and suggestions out of a chapter.
 
+## Publishing (Phase 07)
+
+- **Publishing** (menu) or **Publish** (on a book) has five tabs:
+  - **Book setup**: interior template, trim size, ink and paper (with KDP's page range), front and back matter, your copyright details (PBS writes no legal text and invents no ISBN), and index terms.
+  - **Store details**: description, seven keywords, category ideas (unverified), reading age, and the AI disclosure checklist with KDP's definitions.
+  - **Cover**: size from the final page count of the print PDF; artwork you have the rights to; typography for title, subtitle, author, spine and back text; then build the print cover, a proof with guides and the eBook cover.
+  - **Build and preview**: EPUB, print PDF, Word, HTML and Markdown, each with its check report and fidelity result. The reading preview tells you whether it matches the last export; print preview pages are pictures of the same layout.
+  - **Publish package**: everything in one folder and ZIP, plus the preflight report and step-by-step upload instructions. Nothing is uploaded or published for you, and passing the checks does not mean KDP will accept the book.
+- **Optional EPUBCheck.** EPUB validation needs EPUBCheck (Java). Install it, or set `PBS_EPUBCHECK_JAR`; without it the report says "unavailable", never "passed".
+- **KDP rules** are rule set `kdp-paperback-2026-11-22`, checked against KDP's help pages on 2026-11-22. The sources are in `docs/ADR/0008-publishing.md`.
+
 ## Sources, evidence, voice and interviews (Phase 04)
 
 - **Sources.** Open a book, then **Sources**, and add Markdown, text, HTML, Word or text-based PDF files. Each is kept unchanged and split into passages you can search; matched words are highlighted and every hit says why it matched. Turn **Use for AI** off to keep a source out of new AI suggestions, or **Remove** it. **Knowledge** in the menu holds shared libraries that books can opt in to.

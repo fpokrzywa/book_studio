@@ -1,0 +1,62 @@
+/*
+ * Publishing: the setup reads like a printer's order form; previews sit on a neutral desk so the
+ * page edges are visible.
+ */
+.matter-list,
+.layer-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.matter-list > li {
+  border-top: 1px solid var(--rule);
+  padding-top: var(--space-2);
+}
+.keyword-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+.facts-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0;
+}
+.facts-grid dt {
+  font-weight: 700;
+}
+.facts-grid dd {
+  margin: 0;
+}
+.cover-thumb {
+  display: block;
+  max-width: 12rem;
+  height: auto;
+  margin-top: var(--space-3);
+  border: 1px solid var(--rule);
+}
+.book-preview {
+  width: 100%;
+  height: 32rem;
+  border: 1px solid var(--rule);
+  background: #fff;
+  margin-top: var(--space-3);
+}
+.pdf-page {
+  display: block;
+  max-width: min(100%, 28rem);
+  height: auto;
+  margin: var(--space-3) auto;
+  background: #fff;
+  border: 1px solid var(--rule);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+}
+.warnings {
+  color: var(--gilt);
+  padding-left: var(--space-4);
+}
+.file-path {
+  overflow-wrap: anywhere;
+}

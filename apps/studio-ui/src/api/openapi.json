@@ -121,6 +121,46 @@
         "title": "ActivityOut",
         "type": "object"
       },
+      "AiDisclosureIn": {
+        "additionalProperties": false,
+        "properties": {
+          "images": {
+            "default": "",
+            "enum": [
+              "",
+              "none",
+              "assisted",
+              "generated"
+            ],
+            "title": "Images",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "enum": [
+              "",
+              "none",
+              "assisted",
+              "generated"
+            ],
+            "title": "Text",
+            "type": "string"
+          },
+          "translation": {
+            "default": "",
+            "enum": [
+              "",
+              "none",
+              "assisted",
+              "generated"
+            ],
+            "title": "Translation",
+            "type": "string"
+          }
+        },
+        "title": "AiDisclosureIn",
+        "type": "object"
+      },
       "AiRequestIn": {
         "additionalProperties": false,
         "properties": {
@@ -461,6 +501,32 @@
           "report"
         ],
         "title": "ApplyOut",
+        "type": "object"
+      },
+      "ArtworkLicenseIn": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "default": false,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "license": {
+            "default": "",
+            "maxLength": 300,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "License",
+            "type": "string"
+          },
+          "source": {
+            "default": "",
+            "maxLength": 300,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "title": "ArtworkLicenseIn",
         "type": "object"
       },
       "AssetOut": {
@@ -1400,6 +1466,59 @@
         "title": "BriefOut",
         "type": "object"
       },
+      "BuildIn": {
+        "additionalProperties": false,
+        "properties": {
+          "formats": {
+            "items": {
+              "enum": [
+                "markdown",
+                "html",
+                "epub",
+                "docx",
+                "pdf"
+              ],
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Formats",
+            "type": "array"
+          }
+        },
+        "required": [
+          "formats"
+        ],
+        "title": "BuildIn",
+        "type": "object"
+      },
+      "BuildOut": {
+        "properties": {
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationOut"
+            },
+            "title": "Publications",
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "publications",
+          "warnings"
+        ],
+        "title": "BuildOut",
+        "type": "object"
+      },
       "CapabilityOut": {
         "properties": {
           "detail": {
@@ -1436,6 +1555,28 @@
           "detail"
         ],
         "title": "CapabilityOut",
+        "type": "object"
+      },
+      "CategoryIn": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 300,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Text",
+            "type": "string"
+          },
+          "verified": {
+            "const": false,
+            "default": false,
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CategoryIn",
         "type": "object"
       },
       "ChapterContentOut": {
@@ -2263,6 +2404,46 @@
         "title": "ConsentOut",
         "type": "object"
       },
+      "CopyrightIn": {
+        "additionalProperties": false,
+        "properties": {
+          "edition": {
+            "default": "",
+            "maxLength": 300,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Edition",
+            "type": "string"
+          },
+          "holder": {
+            "default": "",
+            "maxLength": 300,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Holder",
+            "type": "string"
+          },
+          "isbn": {
+            "default": "",
+            "maxLength": 20,
+            "title": "Isbn",
+            "type": "string"
+          },
+          "notice_md": {
+            "default": "",
+            "description": "Your own notice; PBS writes none",
+            "maxLength": 5000,
+            "title": "Notice Md",
+            "type": "string"
+          },
+          "year": {
+            "default": "",
+            "maxLength": 20,
+            "title": "Year",
+            "type": "string"
+          }
+        },
+        "title": "CopyrightIn",
+        "type": "object"
+      },
       "CorrectionIn": {
         "additionalProperties": false,
         "properties": {
@@ -2326,6 +2507,187 @@
           "note"
         ],
         "title": "CorrectionOut",
+        "type": "object"
+      },
+      "CoverIn": {
+        "additionalProperties": false,
+        "properties": {
+          "artwork_asset": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{16}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Asset"
+          },
+          "artwork_fit": {
+            "default": "front",
+            "enum": [
+              "front",
+              "wrap"
+            ],
+            "title": "Artwork Fit",
+            "type": "string"
+          },
+          "artwork_license": {
+            "$ref": "#/components/schemas/ArtworkLicenseIn"
+          },
+          "background": {
+            "default": "#1f3a5f",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Background",
+            "type": "string"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/CoverLayerIn"
+            },
+            "maxItems": 10,
+            "title": "Layers",
+            "type": "array"
+          },
+          "text_color": {
+            "default": "#ffffff",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Text Color",
+            "type": "string"
+          }
+        },
+        "title": "CoverIn",
+        "type": "object"
+      },
+      "CoverLayerIn": {
+        "additionalProperties": false,
+        "properties": {
+          "align": {
+            "default": "center",
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ],
+            "title": "Align",
+            "type": "string"
+          },
+          "color": {
+            "default": "",
+            "pattern": "^(#[0-9a-fA-F]{6})?$",
+            "title": "Color",
+            "type": "string"
+          },
+          "font": {
+            "default": "Libertinus Serif",
+            "enum": [
+              "Libertinus Serif",
+              "New Computer Modern",
+              "DejaVu Sans Mono"
+            ],
+            "title": "Font",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "title",
+              "subtitle",
+              "author",
+              "spine",
+              "back_text"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "size_pt": {
+            "default": 12,
+            "maximum": 120.0,
+            "minimum": 7.0,
+            "title": "Size Pt",
+            "type": "number"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Text",
+            "type": "string"
+          },
+          "weight": {
+            "default": "regular",
+            "enum": [
+              "regular",
+              "bold"
+            ],
+            "title": "Weight",
+            "type": "string"
+          },
+          "y": {
+            "default": 0.2,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "CoverLayerIn",
+        "type": "object"
+      },
+      "CoverSpecOut": {
+        "properties": {
+          "based_on_pdf": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The interior PDF whose final page count sized the cover",
+            "title": "Based On Pdf"
+          },
+          "latest_cover": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last print cover built, and whether it is stale",
+            "title": "Latest Cover"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          }
+        },
+        "required": [
+          "spec",
+          "based_on_pdf",
+          "latest_cover",
+          "message"
+        ],
+        "title": "CoverSpecOut",
         "type": "object"
       },
       "DiffRow": {
@@ -4369,6 +4731,115 @@
         "title": "ManualModelIn",
         "type": "object"
       },
+      "MatterItemIn": {
+        "additionalProperties": false,
+        "properties": {
+          "body_md": {
+            "default": "",
+            "maxLength": 20000,
+            "title": "Body Md",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "include_story_bible_terms": {
+            "default": true,
+            "title": "Include Story Bible Terms",
+            "type": "boolean"
+          },
+          "kind": {
+            "maxLength": 40,
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 300,
+            "pattern": "^[^\\r\\n]*$",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "MatterItemIn",
+        "type": "object"
+      },
+      "MetadataIn": {
+        "additionalProperties": false,
+        "properties": {
+          "age_max": {
+            "anyOf": [
+              {
+                "maximum": 18.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Max"
+          },
+          "age_min": {
+            "anyOf": [
+              {
+                "maximum": 18.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Min"
+          },
+          "ai_disclosure": {
+            "$ref": "#/components/schemas/AiDisclosureIn"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryIn"
+            },
+            "maxItems": 3,
+            "title": "Categories",
+            "type": "array"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Description",
+            "type": "string"
+          },
+          "formats": {
+            "items": {
+              "enum": [
+                "paperback",
+                "ebook"
+              ],
+              "type": "string"
+            },
+            "title": "Formats",
+            "type": "array"
+          },
+          "keywords": {
+            "items": {
+              "maxLength": 100,
+              "pattern": "^[^\\r\\n]*$",
+              "type": "string"
+            },
+            "maxItems": 7,
+            "title": "Keywords",
+            "type": "array"
+          }
+        },
+        "title": "MetadataIn",
+        "type": "object"
+      },
       "ModelOut": {
         "properties": {
           "capabilities": {
@@ -4818,6 +5289,40 @@
         "title": "OutlineOut",
         "type": "object"
       },
+      "PackageOut": {
+        "properties": {
+          "files": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "folder": {
+            "title": "Folder",
+            "type": "string"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/PublicationOut"
+          },
+          "report_summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Report Summary",
+            "type": "object"
+          }
+        },
+        "required": [
+          "publication",
+          "folder",
+          "files",
+          "report_summary"
+        ],
+        "title": "PackageOut",
+        "type": "object"
+      },
       "PlanChapterOut": {
         "properties": {
           "chapter_id": {
@@ -5261,6 +5766,41 @@
         "title": "PlanRequestIn",
         "type": "object"
       },
+      "PreviewHtmlOut": {
+        "properties": {
+          "html": {
+            "title": "Html",
+            "type": "string"
+          },
+          "identical_to_last_export": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identical To Last Export"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "html",
+          "sha256",
+          "identical_to_last_export",
+          "note"
+        ],
+        "title": "PreviewHtmlOut",
+        "type": "object"
+      },
       "PreviewIn": {
         "additionalProperties": false,
         "properties": {
@@ -5487,6 +6027,182 @@
           "code"
         ],
         "title": "Problem",
+        "type": "object"
+      },
+      "ProfileIn": {
+        "additionalProperties": false,
+        "properties": {
+          "copyright": {
+            "$ref": "#/components/schemas/CopyrightIn"
+          },
+          "cover": {
+            "$ref": "#/components/schemas/CoverIn"
+          },
+          "index_terms": {
+            "items": {
+              "maxLength": 100,
+              "pattern": "^[^\\r\\n]*$",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Index Terms",
+            "type": "array"
+          },
+          "ink_paper": {
+            "enum": [
+              "bw_white",
+              "bw_cream",
+              "bw_groundwood",
+              "standard_color_white",
+              "premium_color_white"
+            ],
+            "title": "Ink Paper",
+            "type": "string"
+          },
+          "matter": {
+            "items": {
+              "$ref": "#/components/schemas/MatterItemIn"
+            },
+            "maxItems": 40,
+            "title": "Matter",
+            "type": "array"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/MetadataIn"
+          },
+          "template": {
+            "enum": [
+              "technical_manual",
+              "nonfiction",
+              "novel",
+              "workbook"
+            ],
+            "title": "Template",
+            "type": "string"
+          },
+          "trim": {
+            "maxLength": 20,
+            "title": "Trim",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template",
+          "trim",
+          "ink_paper",
+          "matter"
+        ],
+        "title": "ProfileIn",
+        "type": "object"
+      },
+      "ProfileOut": {
+        "properties": {
+          "ai_evidence": {
+            "additionalProperties": true,
+            "title": "Ai Evidence",
+            "type": "object"
+          },
+          "copyright": {
+            "additionalProperties": true,
+            "title": "Copyright",
+            "type": "object"
+          },
+          "cover": {
+            "additionalProperties": true,
+            "title": "Cover",
+            "type": "object"
+          },
+          "index_terms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Index Terms",
+            "type": "array"
+          },
+          "ink_paper": {
+            "enum": [
+              "bw_white",
+              "bw_cream",
+              "bw_groundwood",
+              "standard_color_white",
+              "premium_color_white"
+            ],
+            "title": "Ink Paper",
+            "type": "string"
+          },
+          "matter": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Matter",
+            "type": "array"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "options": {
+            "additionalProperties": true,
+            "description": "Templates, trims, ink/paper choices, matter kinds, fonts",
+            "title": "Options",
+            "type": "object"
+          },
+          "rules": {
+            "additionalProperties": true,
+            "description": "KDP rule-set version, checked-on date, source URLs, known gaps",
+            "title": "Rules",
+            "type": "object"
+          },
+          "template": {
+            "enum": [
+              "technical_manual",
+              "nonfiction",
+              "novel",
+              "workbook"
+            ],
+            "title": "Template",
+            "type": "string"
+          },
+          "tools": {
+            "additionalProperties": true,
+            "description": "What is installed: Typst, EPUBCheck, image generation",
+            "title": "Tools",
+            "type": "object"
+          },
+          "trim": {
+            "title": "Trim",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "template",
+          "trim",
+          "ink_paper",
+          "matter",
+          "copyright",
+          "metadata",
+          "cover",
+          "index_terms",
+          "options",
+          "rules",
+          "tools",
+          "ai_evidence",
+          "updated_at"
+        ],
+        "title": "ProfileOut",
         "type": "object"
       },
       "ProjectCreate": {
@@ -6340,6 +7056,152 @@
           }
         },
         "title": "ProviderPatch",
+        "type": "object"
+      },
+      "PublicationOut": {
+        "properties": {
+          "byte_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Byte Size"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "fidelity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fidelity"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ink_paper": {
+            "title": "Ink Paper",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "package_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Id"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Count"
+          },
+          "report_summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Report Summary",
+            "type": "object"
+          },
+          "ruleset": {
+            "title": "Ruleset",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "template": {
+            "title": "Template",
+            "type": "string"
+          },
+          "trim": {
+            "title": "Trim",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "package_id",
+          "file_name",
+          "sha256",
+          "byte_size",
+          "page_count",
+          "template",
+          "trim",
+          "ink_paper",
+          "ruleset",
+          "settings",
+          "report_summary",
+          "fidelity",
+          "error",
+          "created_at"
+        ],
+        "title": "PublicationOut",
         "type": "object"
       },
       "QualityFindingOut": {
@@ -19741,6 +20603,1295 @@
         "summary": "Reject Proposal",
         "tags": [
           "ai"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/build": {
+      "post": {
+        "operationId": "build_api_projects__project_id__publishing_build_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Build",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/cover-spec": {
+      "get": {
+        "operationId": "cover_spec_api_projects__project_id__publishing_cover_spec_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverSpecOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Cover Spec",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/covers": {
+      "post": {
+        "operationId": "build_covers_api_projects__project_id__publishing_covers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Build Covers",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/package": {
+      "post": {
+        "operationId": "build_package_api_projects__project_id__publishing_package_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Build Package",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/preview/html": {
+      "get": {
+        "operationId": "preview_html_api_projects__project_id__publishing_preview_html_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewHtmlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Preview Html",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/preview/pdf-page/{page}": {
+      "get": {
+        "operationId": "preview_pdf_page_api_projects__project_id__publishing_preview_pdf_page__page__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page",
+            "required": true,
+            "schema": {
+              "title": "Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "image/png": {}
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Preview Pdf Page",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/profile": {
+      "get": {
+        "operationId": "get_profile_api_projects__project_id__publishing_profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Get Profile",
+        "tags": [
+          "publishing"
+        ]
+      },
+      "put": {
+        "operationId": "put_profile_api_projects__project_id__publishing_profile_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Put Profile",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/publications": {
+      "get": {
+        "operationId": "list_publications_api_projects__project_id__publishing_publications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PublicationOut"
+                  },
+                  "title": "Response List Publications Api Projects  Project Id  Publishing Publications Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "List Publications",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/file": {
+      "get": {
+        "operationId": "publication_file_api_projects__project_id__publishing_publications__pub_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pub_id",
+            "required": true,
+            "schema": {
+              "title": "Pub Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "inline",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Inline",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Publication File",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/package-file": {
+      "get": {
+        "operationId": "package_file_api_projects__project_id__publishing_publications__pub_id__package_file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pub_id",
+            "required": true,
+            "schema": {
+              "title": "Pub Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "inline",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Inline",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Package File",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/report": {
+      "get": {
+        "operationId": "report_api_projects__project_id__publishing_publications__pub_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pub_id",
+            "required": true,
+            "schema": {
+              "title": "Pub Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Report Api Projects  Project Id  Publishing Publications  Pub Id  Report Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Report",
+        "tags": [
+          "publishing"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/publishing/publications/{pub_id}/report.html": {
+      "get": {
+        "operationId": "report_html_api_projects__project_id__publishing_publications__pub_id__report_html_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "pub_id",
+            "required": true,
+            "schema": {
+              "title": "Pub Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Report Html",
+        "tags": [
+          "publishing"
         ]
       }
     },

@@ -204,6 +204,8 @@ describe("AI assist in the editor", () => {
     expect(await axeViolations(container)).toEqual([]);
 
     await user.click(within(card).getByRole("button", { name: "Accept as a new revision" }));
+    // Announcements clear after a few seconds, so look for this one straight away.
+    expect(await screen.findByText("Accepted. Saved as revision 2.")).toBeInTheDocument(); // announced
     const accept = calls.find((c) => c.path.endsWith("/accept"));
     expect(accept?.body).toEqual({ expected_head_no: 1 });
     await waitFor(() =>
@@ -212,7 +214,6 @@ describe("AI assist in the editor", () => {
       ),
     );
     expect(screen.getByText(/^Saved as revision 2/)).toBeInTheDocument();
-    expect(screen.getByText("Accepted. Saved as revision 2.")).toBeInTheDocument(); // announced
   });
 
   it("sends the author's edited text when it differs from the suggestion", async () => {

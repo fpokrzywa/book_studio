@@ -141,6 +141,21 @@ Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `
 | Originality scope statement and overlaps | `test_originality_report_states_its_scope` |
 | Backup of notes, summaries and decisions | `test_backup_keeps_continuity_summaries_and_finding_decisions` |
 
+### 4.4d Publishing (Phase 07, as built)
+
+| Area | Tests |
+|---|---|
+| Fixture (3 chapters, tables, image, math, code, citations) to all five formats, inspected programmatically | `test_publishing.py::test_fixture_exports_to_all_five_formats_and_each_is_inspected` (pypdf: page size, count, fonts, language, text; zipfile/lxml: EPUB container, metadata, nav, MathML, alt text, cross-file links; python-docx: headings, styles, tables, alt text, hyperlinks; HTML and Markdown), determinism, reports saved beside each file |
+| Print cover recalculates from the final page count | `test_print_cover_recalculates_when_the_final_page_count_changes`; Playwright `publishing.spec.ts` |
+| EPUB validation never faked | `test_epub_validation_is_unavailable_never_passed_without_epubcheck` (unavailable without EPUBCheck; a failing validator fails) |
+| Publish package | `test_publish_package_has_everything_and_publishes_nothing`; golden steps 11–13; Playwright (opens the preflight report) |
+| No invented legal text or ISBN | `test_front_matter_never_invents_legal_text_or_isbn` |
+| Metadata handoff checks | `test_metadata_handoff_checks` |
+| Previews say whether they match the export | `test_previews_say_whether_they_match_the_export`; Vitest `Publish.test.tsx` |
+| Unsupported math reported, not dropped | `test_unsupported_math_is_printed_as_source_and_reported` |
+| Cover artwork rights and resolution | `test_cover_artwork_needs_rights_and_its_resolution_is_checked` |
+| KDP rule arithmetic, LaTeX → Typst | `test_kdp_cover_and_margin_rules`, `test_latex_to_typst_conversion` |
+
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
 - Planning: unsupported market metrics are never produced (assert the schema has no such fields unless a licensed source is configured). An outline change preserves prose.

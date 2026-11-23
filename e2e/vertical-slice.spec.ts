@@ -144,13 +144,12 @@ test("archive makes a book read-only and unarchive restores it", async ({ page, 
   await expect(page.getByLabel("New chapter title")).toBeVisible();
 });
 
-test("later-phase sections are visibly not implemented", async ({ page, core }) => {
+test("every section in the menu is a working page (Phase 07 completes the roadmap)", async ({ page, core }) => {
   void core;
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByText("Not yet implemented (Phase 07)")).toBeVisible();
-  await expect(nav.getByRole("link", { name: /Publishing/ })).toHaveCount(0);
+  await expect(nav.getByText(/Not yet implemented/)).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "AI settings" })).toBeVisible(); // Phase 03 is live
-  await page.goto("/publishing");
-  await expect(page.getByText("Not yet implemented.")).toBeVisible();
+  await nav.getByRole("link", { name: "Publishing" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Publishing" })).toBeVisible();
 });

@@ -1,6 +1,6 @@
 # ADR 0003: Export-engine spikes (Phase 02) and print-PDF engine recommendation
 
-- **Status:** Proposed. The decision is due in Phase 07 and needs the user's validation (BUILD_STATE D7).
+- **Status:** Accepted in Phase 07: Typst is the print-PDF engine (see ADR-0008). WeasyPrint and Pandoc remain unused.
 - **Date:** 2026-11-22
 
 ## Context

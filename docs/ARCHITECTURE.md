@@ -240,6 +240,20 @@ The Open Library adapter is `providers/research_adapters.py`. Planning jobs (out
 
 Section and review jobs run on the same job runner through `jobs/writing_exec.py`. Phase 05 generation runs now create one draft plan per chapter. See ADR-0007.
 
+### 7.5 Publishing layer (Phase 07)
+`pbs_core.publishing` contains:
+- `kdp_rules`: the versioned KDP specifications with source URLs;
+- `book`: assembly, templates, matter, numbering and citations;
+- `write_markdown`, `write_html`, `write_epub`, `write_docx` and `write_typst`: the writers (Typst gives the print PDF);
+- `latex_typst`: math conversion;
+- `fidelity`: export inspection;
+- `preflight`: the checks and the HTML report;
+- `cover`: print wrap, proof and eBook cover;
+- `metadata`;
+- `package`.
+
+`services/publishing.py` stores every build as a `publication` with its report and serves previews and files. See ADR-0008. Typst, python-docx and Pillow are runtime dependencies.
+
 ## 8. Frontend architecture
 
 - React 19 + TypeScript (strict) + Vite. React Router (declarative routes). TanStack Query for server state; no global client store unless needed.

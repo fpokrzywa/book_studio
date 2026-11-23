@@ -150,6 +150,15 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
   - The originality report states its local scope and that no match is not proof of originality.
 - **Spending.** Every section job counts against the run's budget cap. A stopped run cancels its plans.
 
+## 7f. Phase 07 controls as built (details: ADR-0008)
+
+- **Nothing is published or uploaded.** The package is a local folder and a ZIP, and its manifest says `auto_publish: false`. Preflight never contacts KDP or any web page.
+- **No fabricated legal or identity data.** PBS writes no copyright notice and generates no ISBN; an ISBN with an invalid check digit is refused. Category suggestions are marked unverified, and metadata checks block promotional claims.
+- **Exported HTML is inert.** It has a strict Content-Security-Policy and no scripts; images are embedded. It is served with `sandbox`, and the in-app reading preview is a `sandbox=""` iframe.
+- **Cover rights.** Artwork needs the author's rights confirmation (source, license, confirmed). No image generation provider exists, and lettering is typography.
+- **Code is never executed** (ADR-0007), and EPUBCheck runs only if the author installed it.
+- **Files are written with `safe_join`** under the project's workspace folder. Package file downloads are limited to names in the package manifest.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

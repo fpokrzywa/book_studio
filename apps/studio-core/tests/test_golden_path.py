@@ -8,7 +8,6 @@ that owns them, so the scenario's progress is visible in every test run.
 from pathlib import Path
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 from pbs_core.api.app import create_app
@@ -96,17 +95,19 @@ def test_steps_06_07_15_draft_review_accept_with_zero_egress(workspace: Path, ne
     assert external_requests() == before and network_guard == []  # 15
 
 
-PENDING = [
-    ("11", "export EPUB, DOCX, PDF (Markdown and HTML exports are covered)", "07"),
-    ("12", "validate exports (preflight)", "07"),
-    ("13", "KDP handoff package", "07"),
-]
+def test_steps_11_12_13_exports_preflight_and_kdp_package(client: TestClient) -> None:
+    """11: EPUB, DOCX and PDF (with Markdown and HTML); 12: preflight with each export; 13: the KDP package."""
+    from tests.test_publishing import fixture_book
 
-
-@pytest.mark.parametrize(("step", "what", "phase"), PENDING, ids=[s for s, _, _ in PENDING])
-@pytest.mark.xfail(strict=True, reason="not implemented yet; owned by a later phase")
-def test_pending_golden_steps(step: str, what: str, phase: str) -> None:
-    pytest.fail(f"E2E-GOLDEN-01 step {step} ({what}) arrives in Phase {phase}")
+    f = fixture_book(client)
+    pkg = client.post(f"/api/projects/{f['pid']}/publishing/package")
+    assert pkg.status_code == 201, pkg.text
+    out = pkg.json()
+    kinds = {p["kind"] for p in client.get(f"/api/projects/{f['pid']}/publishing/publications").json()}
+    assert {"markdown", "html", "epub", "docx", "pdf", "cover_print", "cover_ebook", "package"} <= kinds  # 11
+    assert out["report_summary"].get("pass", 0) > 0  # 12
+    names = {x["name"] for x in out["files"]}
+    assert {"KDP-UPLOAD-STEPS.md", "metadata.json", "preflight-report.html"} <= names  # 13
 
 
 def test_step_04_ingest_knowledge_sources(client: TestClient) -> None:

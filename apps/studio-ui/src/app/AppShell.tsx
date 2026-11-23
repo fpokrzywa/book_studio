@@ -15,6 +15,7 @@ const WORKING: NavItem[] = [
   { to: "/import", label: "Import" },
   { to: "/manuscripts", label: "Manuscripts" },
   { to: "/knowledge", label: "Knowledge" },
+  { to: "/publishing", label: "Publishing" },
   { to: "/jobs", label: "AI jobs" },
   { to: "/ai-settings", label: "AI settings" },
   { to: "/voice", label: "Author voice" },
@@ -23,7 +24,7 @@ const WORKING: NavItem[] = [
 ];
 
 /** Later-phase sections: visible so the roadmap is honest, but not navigable. */
-export const LATER: { label: string; phase: string }[] = [{ label: "Publishing", phase: "07" }];
+export const LATER: { label: string; phase: string }[] = [];
 
 export function AppShell() {
   const location = useLocation();
@@ -43,7 +44,7 @@ export function AppShell() {
             <small>Your books, on this computer</small>
           </NavLink>
           <ul>
-            {WORKING.slice(0, 5).map((item) => (
+            {WORKING.slice(0, 6).map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} end={item.end} className="nav-link">
                   {item.label}
@@ -51,24 +52,28 @@ export function AppShell() {
               </li>
             ))}
           </ul>
-          <p className="nav-group-label" id="later-label">
-            Coming in later phases
-          </p>
-          <ul aria-labelledby="later-label">
-            {LATER.map((item) => (
-              <li key={item.label}>
-                <span className="nav-disabled" aria-disabled="true">
-                  {item.label}
-                  <small>Not yet implemented (Phase {item.phase})</small>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {LATER.length ? (
+            <>
+              <p className="nav-group-label" id="later-label">
+                Coming in later phases
+              </p>
+              <ul aria-labelledby="later-label">
+                {LATER.map((item) => (
+                  <li key={item.label}>
+                    <span className="nav-disabled" aria-disabled="true">
+                      {item.label}
+                      <small>Not yet implemented (Phase {item.phase})</small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
           <p className="nav-group-label" id="studio-label">
             Studio
           </p>
           <ul aria-labelledby="studio-label">
-            {WORKING.slice(5).map((item) => (
+            {WORKING.slice(6).map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} className="nav-link">
                   {item.label}
