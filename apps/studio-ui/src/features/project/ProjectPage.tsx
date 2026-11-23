@@ -26,6 +26,7 @@ import {
   words,
 } from "../../lib/format";
 import { ActivityList } from "../activity/ActivityList";
+import { ProjectVoicePanel } from "../advanced/VoiceParts";
 import { ManuscriptTree } from "./ManuscriptTree";
 import { initialValues, ProjectForm } from "./ProjectForm";
 
@@ -182,8 +183,23 @@ function ProjectView({ project }: { project: Project }) {
                 <Link to={`/projects/${project.id}/interview`}>Interview</Link>{" "}
                 <span className="muted">your own stories, in your own words</span>
               </li>
+              <li>
+                <Link to={`/projects/${project.id}/translations`}>Translations</Link>{" "}
+                <span className="muted">
+                  linked editions in other languages; the original is never changed
+                </span>
+              </li>
+              <li>
+                <Link to={`/projects/${project.id}/narration`}>Narration</Link>{" "}
+                <span className="muted">optional audio, made only with a speech engine you turn on</span>
+              </li>
+              <li>
+                <Link to={`/projects/${project.id}/recordings`}>Recorded interviews</Link>{" "}
+                <span className="muted">transcripts with timestamps, quotations as sources</span>
+              </li>
             </ul>
           </section>
+          <ProjectVoicePanel projectId={project.id} />
           <ExportsSection project={project} />
           <BackupSection project={project} />
           <section className="panel" aria-labelledby="project-activity">

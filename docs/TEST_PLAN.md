@@ -156,6 +156,23 @@ Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `
 | Cover artwork rights and resolution | `test_cover_artwork_needs_rights_and_its_resolution_is_checked` |
 | KDP rule arithmetic, LaTeX → Typst | `test_kdp_cover_and_margin_rules`, `test_latex_to_typst_conversion` |
 
+### 4.4e Advanced features (Phase 08, as built)
+
+| Area | Tests |
+|---|---|
+| Two books in a series, canon modified, a planted contradiction found, the author's resolution kept on re-run, "update canon" makes the finding go away | `test_advanced.py::test_series_canon_contradiction_and_resolution_survive_rerun`; Playwright `advanced.spec.ts` (UI: create series, add books, edit canon, run the check, open the passage, resolve, re-run) |
+| Relationship rule; suggestions never used as canon | `test_relationship_check_and_suggestions_are_not_canon`; Vitest `Series.test.tsx` |
+| Series canon reaches writing prompts | `test_series_canon_reaches_writing_prompts` |
+| Pen name and voice rules shown per book and used in prompts | `test_pen_name_voice_rules_shown_per_project_and_used_in_prompts` |
+| Translate one chapter without editing the source; protected content kept; language links both ways; chapter identity kept | `test_translate_one_chapter_without_touching_source`; Playwright |
+| Approval rule; lost placeholders rejected; edition rules | `test_translation_requires_an_approved_revision_and_rejects_lost_placeholders` |
+| Narration parts: limit, alignment, unreadable content announced | `test_narration_chunks_keep_alignment_and_announce_unreadable_content` |
+| Graceful degradation with no engines | `test_narration_degrades_gracefully_without_an_engine`, `test_transcription_degrades_gracefully_without_whisper`; Playwright |
+| No cloud calls in local-only mode | `test_local_only_mode_blocks_cloud_speech_and_transcription` (no request reaches the mock transport; the egress counter is unchanged) |
+| Cloud path when allowed (recorded wire format) | `test_cloud_speech_and_transcription_when_allowed` (consent needed; WAV response; cost from the entered price; whisper-1 `verbose_json` segments; the key never stored in the database) |
+| Export with chapter metadata and notes | `test_narration_with_test_engine_exports_aligned_audio` (ZIP: WAV per chapter, `chapters.json` offsets and block IDs, `.cue`, `NOTES.txt` with AI-voice and "not checked against ACX"); stale audio after a new revision |
+| Recordings: rights, audio check, immutable transcript, speaker correction, quotation → source | `test_recording_rights_transcript_speakers_and_quote_as_source` |
+
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
 - Planning: unsupported market metrics are never produced (assert the schema has no such fields unless a licensed source is configured). An outline change preserves prose.

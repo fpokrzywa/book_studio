@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { useProfileActions, useProfiles, type Profile } from "../../api/knowledge";
 import { useAnnounce } from "../../components/Announcer";
+import { PenNameEditor } from "../advanced/VoiceParts";
 import { PageHeader } from "../../components/Misc";
 import { EmptyState, ErrorState, InlineError, Loading } from "../../components/States";
 
@@ -91,6 +92,8 @@ function ProfilePanel({ profile: p }: { profile: Profile }) {
         {p.name} <span className="muted">({p.kind === "pen_name" ? "pen name" : "author"})</span>
       </h2>
       {error ? <InlineError error={error} /> : null}
+
+      <PenNameEditor profile={p} />
 
       <h3>Writing samples</h3>
       {p.samples.length ? (

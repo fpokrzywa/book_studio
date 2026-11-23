@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from pbs_core.context import AppContext
 from pbs_core.domain.clock import to_iso
-from pbs_core.jobs import planning_exec, prompts, writing_exec
+from pbs_core.jobs import planning_exec, prompts, translation_exec, writing_exec
 from pbs_core.jobs.runner import LEASE_SECONDS, add_log
 from pbs_core.knowledge import citations, retrieval
 from pbs_core.planning import runs
@@ -100,7 +100,8 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         return
 
     planning = inp.get("kind") in planning_exec.KINDS
-    writing = inp.get("kind") in writing_exec.KINDS
+    writing = inp.get("kind") in writing_exec.KINDS or inp.get("kind") in translation_exec.KINDS
+    wmod: Any = translation_exec if inp.get("kind") in translation_exec.KINDS else writing_exec
     found = retrieval.Retrieved({}, [], [], "", 0)
     voice = None
     processed: citations.Processed | None = None
@@ -110,7 +111,7 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         built = planning_exec.build(inp)
     elif writing:
         try:
-            prepared = writing_exec.prepare(ctx, job_id, inp)
+            prepared = wmod.prepare(ctx, job_id, inp)
         except ProviderError as exc:
             _finish(ctx, job_id, status="failed", code=exc.code, message=exc.message, partial=None)
             return
@@ -230,7 +231,7 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         if planning:
             planned = planning_exec.parse(inp, payload, ctx.ids.new)
         elif writing and prepared is not None:
-            written = writing_exec.parse(inp, payload, prepared)
+            written = wmod.parse(inp, payload, prepared)
         elif built.json_schema is not None:
             payload = _structured_to_markdown(payload)
         if masked is not None:
@@ -290,7 +291,7 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         planning_exec.commit(ctx, job_id, inp, planned, result, provider, snapshot, built.template)
         return
     if writing and prepared is not None:
-        writing_exec.commit(ctx, job_id, inp, written, prepared, result, provider, snapshot)
+        wmod.commit(ctx, job_id, inp, written, prepared, result, provider, snapshot)
         return
     if processed is None:  # pragma: no cover - chapter jobs always process citations above
         raise RuntimeError("chapter job finished without citation processing")

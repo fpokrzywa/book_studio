@@ -12,6 +12,8 @@ export interface SourceEditorHandle {
   focus(): void;
   /** Current selection as offsets into the source text (null when there is no editor). */
   getSelection(): { start: number; end: number; text: string } | null;
+  /** Select a passage (offsets into the source text) and scroll it into view. */
+  select(start: number, end: number): void;
 }
 
 interface Props {
@@ -73,6 +75,23 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
       const start = t.selectionStart ?? 0;
       const end = t.selectionEnd ?? start;
       return { start, end, text: t.value.slice(start, end) };
+    },
+    select(start: number, end: number) {
+      if (view.current) {
+        const v = view.current;
+        const len = v.state.doc.length;
+        const from = Math.max(0, Math.min(start, len));
+        const to = Math.max(from, Math.min(end, len));
+        v.dispatch({
+          selection: { anchor: from, head: to },
+          effects: EditorView.scrollIntoView(from, { y: "center" }),
+        });
+        v.focus();
+      } else if (textarea.current) {
+        const t = textarea.current;
+        t.focus();
+        t.setSelectionRange(start, end);
+      }
     },
   }));
 

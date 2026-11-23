@@ -6,13 +6,133 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **07: Publishing (assembly, templates, five exports, covers, preflight, metadata, KDP package): COMPLETE (pending user review)** |
-| Next phase | 08 |
-| Branch | `phase/07-publishing`, stacked on `phase/06-writing` (PR #6), then Phases 05 to 01 (PRs #5 to #1). Nothing merged yet. Phase 07 is not committed yet |
-| Schema | Alembic head `0008` (`0008_publishing`). The dev workspace migrates 0007 → 0008 automatically, with a snapshot |
-| KDP rule set | `kdp-paperback-2026-11-22` (sources and checked-on date in ADR-0008 and in the app) |
+| Current phase | **08: Advanced features (series canon and continuity, pen names, translated editions, optional narration, recorded interviews): COMPLETE (pending user review)** |
+| Next phase | 09 |
+| Branch | `phase/08-advanced`, stacked on `phase/07-publishing` (PR #7), then Phases 06 to 01 (PRs #6 to #1). Nothing merged yet. Phase 08 is not committed yet |
+| Schema | Alembic head `0009` (`0009_advanced`). The dev workspace migrates 0008 → 0009 automatically, with a snapshot |
+| KDP rule set | `kdp-paperback-2026-11-22` (unchanged) |
+| OpenAI audio facts | read 2026-11-23 (ADR-0009) |
 | Platforms verified | Windows 11 x64 only. macOS is **not executed** |
-| Last updated | 2026-11-22 |
+| Last updated | 2026-11-23 |
+
+## Phase 08 evidence (real results, 2026-11-23, Windows 11, CPython 3.12.13, Node 26.13)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 182 files already formatted |
+| mypy `--strict` (145 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken |
+| pytest (Core) | **268 passed, 1 skipped** (13 new in `test_advanced.py`). The skip is the Ollama smoke test (no local Ollama) |
+| License gate | passed: 98 runtime dependencies (no new runtime dependency; audio uses the standard library `wave` module) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean (two justified `media-has-caption` exceptions: audio-only players next to their transcript, WCAG 1.2.1) |
+| Vitest + RTL + axe-core | **46 passed** (new `Series.test.tsx`, 3 tests) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **18 passed** (new `advanced.spec.ts`, 2 tests) |
+| Migrations | head `0009`; fresh → head, head → head no-op, models ≡ migrations, upgrade with a snapshot |
+
+### Prompt 08 acceptance → evidence
+
+| Acceptance item | Where it is proven |
+|---|---|
+| Create two books in a shared fictional series, modify canon, detect an intentional contradiction, and preserve the user's resolution | `test_series_canon_contradiction_and_resolution_survive_rerun`. Two books in "Tides of Salt". Canon "eye colour: grey" is corrected to "green"; the old row is kept with `superseded_by`. Book 2's "Mara's brown eyes" is found (rule `trait`, found value "brown"), with offsets that select exactly that sentence and a link `/projects/{b2}/chapters/{c2}?select=start-end`. The author marks it "intended" with a note; a re-run finds 0 new, and the decision and note are kept. The manuscript is untouched (head revision 1). Then "update canon" makes "brown" canon with provenance pointing at the finding; on the next run the finding is no longer present (its decision kept), and book 1's "green eyes" is now flagged. **Playwright `advanced.spec.ts` does the same in the UI**: create the series, add both books, add Mara and the fact, edit it ("Earlier values (1)"), run the check, see the passage link, resolve "Intended" with a note, re-run (nothing open; the decision shows under "resolved"), open the passage in the editor |
+| Translate one chapter without editing the source text; show language-specific chapter links | `test_translate_one_chapter_without_touching_source`. The approved chapter is translated into French with the test model, as a proposal on the French edition's chapter. Source: same head revision, same text, still one revision. Code, `$E = mc^2$`, `[@smith2020]` and `[^1]` are kept byte for byte. Idiom and term-list items are flagged. Accepting the proposal writes revision 1 of the French chapter only. Links: the source chapter lists `fr` → the target chapter (status "accepted"); the target says "translated from" the source chapter, with its link; slug and position match. **Playwright**: create the `fr` edition in the UI, translate with the test model, "Translation waiting for your review", the source text and revision unchanged, the editor's "Other languages" panel links both ways |
+| Narration and transcription degrade gracefully if no provider is installed | `test_narration_degrades_gracefully_without_an_engine` (PATH lookups patched to find nothing): engines listed as "Not installed: …"; synthesis refused with `disabled` while off, then `unavailable` once eSpeak is chosen; **the script is still prepared and readable**; export says there is no audio yet. `test_transcription_degrades_gracefully_without_whisper`: 409 `unavailable`, and the recording stays "imported". Playwright: the script is prepared and shown with no engine; "Make audio" explains narration is off |
+| No cloud calls in local-only mode | `test_local_only_mode_blocks_cloud_speech_and_transcription`: OpenAI chosen for speech and transcription, key stored, local-only mode → both 409 "Local-only mode is on…"; **the mock transport received 0 requests and `egress.external_requests()` is unchanged**; cloud engines are listed as unavailable. `test_cloud_speech_and_transcription_when_allowed` shows the cloud path needs cloud mode **and** the book's consent (409 with no request before consent) |
+| Tests pass, optional dependencies documented, BUILD_STATE updated | This section. README "Series, translations, narration and interviews (Phase 08)" → **Optional tools** table (eSpeak NG, Piper + `PBS_PIPER_MODEL`, openai-whisper + FFmpeg, OpenAI, EPUBCheck) |
+
+### Other Phase 08 requirements → evidence
+
+| Requirement | Evidence |
+|---|---|
+| Series workspace: series/book relationships, shared story bible, characters (traits, aliases, relationships), location cards, plot threads, chronology and cross-book continuity | Tables in DATA_MODEL §3.10; Series pages (Books, Story bible, Relationships, Continuity review); chronology ordering and warnings in `series.continuity.chronology`; series canon added to drafting prompts (`test_series_canon_reaches_writing_prompts`) |
+| Editable structured facts with provenance; author-approved canon distinct from AI suggestions | status and origin on every entity, fact and relationship; book notes import as suggestions; `test_relationship_check_and_suggestions_are_not_canon` (a suggested age is never compared); Vitest `Series.test.tsx` (suggestion vs canon labels, approve) |
+| Highlight contradictions with passage links; the user resolves manually | four rules; offsets and links; four resolutions; the editor selects `?select=start-end` on open |
+| Relationship visualization if practical; text editing works without it | `RelationshipMap` (SVG ring) beside the text list, which is the accessible version; Vitest checks both. The editor and story bible do not depend on it |
+| Pen-name profiles with editable voice rules; show the active voice per project | `PenNameEditor` on Author voice; `ProjectVoicePanel` on the book page; rules in prompts (`test_pen_name_voice_rules_shown_per_project_and_used_in_prompts`) |
+| Translation: approved original revision, language and provider; independent linked revisions; preserve chapter IDs, named entities, figures, code/math, citations and structural links; flag idiom and terminology inconsistencies; don't overwrite the original | ADR-0009 §4; `test_translation_requires_an_approved_revision_and_rejects_lost_placeholders` (not approved → 409 `not_approved`; a revision labelled "Approved" counts; a reply dropping a placeholder → `invalid_output`, no proposal; duplicate language, edition of an edition, or the source language refused) |
+| Narration: speech-ready chunks, a configured local or cloud provider only when enabled, chapter-to-audio alignment and progress, export with chapter metadata and transparent cost and licensing notes; no ACX claims | `test_narration_chunks_keep_alignment_and_announce_unreadable_content`; `test_narration_with_test_engine_exports_aligned_audio` (WAV per chapter, `chapters.json` with part offsets and block IDs, `book.cue`, `NOTES.txt` with cost, licences, AI-voice disclosure and "Not checked against ACX/Audible or KDP audiobook requirements"; a new revision makes old audio stale); cost from the entered price only (`test_cloud_speech_and_transcription_when_allowed`), "unknown" otherwise |
+| Recorded interviews: owned audio, an explicitly configured engine, speaker correction, timestamps and links kept, quotations as sources, never fabricate speech | `test_recording_rights_transcript_speakers_and_quote_as_source` (rights required; non-audio refused; the test engine labels its text "not real speech"; speaker rename for one or all segments; **an UPDATE of transcript text is rejected by the database trigger**; quotation → knowledge source with exact text and timestamps; re-transcribing refused while quotations exist; the audio streams back) |
+| Keep core publishing intact | the full suite, including every Phase 01–07 test and Playwright spec, passes unchanged apart from the schema head (`0008` → `0009`) |
+
+## Phase 08: what was built
+
+**Core**
+- Migration `0009_advanced`: series, canon, continuity, translation, narration and recording tables; `author_profile.pen_name` and `voice_rules_json`; trigger `transcript_segment_immutable`.
+- `series/continuity.py`, `services/series.py` and `api/routes_series.py`.
+- `translation/protect.py`, `jobs/translation_exec.py` (job kind `translate_chapter`, dispatched in `jobs/execute.py`) and `services/translation.py`.
+- `services/voice.py`: pen name, rules, and the active voice per book; rules added to prompts (`jobs/prompts.py`, `jobs/writing_exec.py`).
+- `media/engines.py`, `media/narration.py` and `services/media.py`.
+- `api/routes_advanced.py` (voice, editions, chapter links, narration, recordings, media status).
+- The mock provider returns a labelled stand-in translation.
+
+**UI**
+- **Series** in the main menu: series list; per series, Books, Story bible (with suggestions and earlier values), Relationships (list plus map) and Continuity review.
+- Book page: links to **Translations**, **Narration** and **Recorded interviews**, and a **Voice and series** panel.
+- Author voice: pen name and do/avoid rules.
+- Chapter editor: opens with a passage selected from `?select=start-end`, and an "Other languages" panel.
+- New `api/advanced.ts`; `styles/advanced.css`.
+
+**Docs**
+- ADR-0009 (with the OpenAI audio API facts and the date they were read).
+- SECURITY §7g, DATA_MODEL §3.9–3.10, ARCHITECTURE §7.6, TEST_PLAN §4.4e.
+- README "Series, translations, narration and interviews (Phase 08)", with the optional tools table.
+
+## Decisions taken in Phase 08 (need your validation)
+
+| # | Decision | Why | Reversible? |
+|---|---|---|---|
+| P8-1 | Continuity review is rule-based (traits, age, death, kinship, chronology), not model-based | Reproducible, offline, free, and never invents a contradiction; findings are questions, not verdicts | Yes (a model-based reviewer could add suggestions later) |
+| P8-2 | A finding's identity is rule + canon reference + chapter + normalised sentence; editing that sentence makes a new finding | Keeps decisions across re-runs without guessing whether a rewritten sentence is "the same" problem | Yes |
+| P8-3 | Changing a canon value writes a new fact and supersedes the old one | Canon history and provenance are never lost | No (by design) |
+| P8-4 | A book belongs to at most one series | Keeps "which canon applies" unambiguous | Yes |
+| P8-5 | A translated edition is a full, separate book (its own chapters, revisions, exports) linked by chapter | Independent revisions and publishing per language; the original cannot be overwritten | Costly later |
+| P8-6 | "Approved original" = the head of a chapter marked Approved, or any revision labelled "Approved" | Uses existing approval and revision labels; no new workflow | Yes |
+| P8-7 | Translation output is a normal proposal; the suggested chapter title is shown, not applied | AI never silently overwrites; titles stay the author's call | Yes |
+| P8-8 | Narration is synchronous, a few parts per request (no background job) | Local engines are fast; progress is visible per part; no audio job type in the queue | Yes |
+| P8-9 | Audio is WAV only, one file per chapter, plus `chapters.json` and a cue sheet | Lossless and readable everywhere without FFmpeg; no claim of store readiness | Yes (MP3 via FFmpeg later) |
+| P8-10 | No built-in audio prices; cost = the author's entered price, else "unknown"; local engines cost 0 | Never fabricate costs | Yes |
+| P8-11 | Transcripts must have timestamps: OpenAI `whisper-1` or the diarize model only; other models are refused | Quotations must link to a time in the audio | Yes |
+| P8-12 | Transcript text and timestamps are immutable; only speaker names change; re-transcribing is blocked while quotations exist | Never fabricate or alter speech; sources stay traceable | No (by design) |
+
+## Known limitations (Phase 08, honest list)
+
+1. **No real speech or transcription engine was run.** eSpeak NG, Piper and Whisper are not installed on this machine, so only their "not installed" paths and command construction were exercised. OpenAI audio was exercised against a recorded wire format (mock transport), not the live API. Audio quality is unverified.
+2. **The continuity rules are narrow and English-centric.** Colour words, "N years old", a fixed verb list for "acting while dead", and "B's <kin> A" kinship phrasing only. Pronoun-only sentences ("Her eyes were brown") are not linked to a character. The review is a helper, not a full read.
+3. **Translation quality was not evaluated.** The test model returns a labelled stand-in. Name, term and structure checks are heuristic and may flag false positives.
+4. **Narration reads the Markdown structure, not a performance script.** No pronunciation lexicon, SSML, pauses between chapters, or loudness normalisation. Exports are not checked against ACX, Audible or KDP audiobook requirements.
+5. **Recordings:** duration is read only from WAV headers (other formats show "—" until transcribed). Files over 25 MB cannot go to OpenAI (split them first). No waveform view and no timestamp-click seeking yet.
+6. **Per-book backups (Phase 02) do not yet include Phase 08 data**: series canon, continuity decisions, edition links, narration parts and audio, recordings and transcripts. A translated edition is its own book and can be backed up on its own. The database snapshot taken before each migration covers everything. Adding these to the backup format is a Phase 09 candidate.
+7. Real Ollama and cloud text models remain unexercised (see Phase 03).
+8. My visual check created two demo books and a demo series ("Tides of Salt (demo)") in the dev workspace (`.pbs-data`, git-ignored). I looked at the relationship map, the continuity review, a passage link opening the editor with the sentence selected, and the narration page with no engine installed.
+
+## Phase 08: bugs found and fixed
+
+- **A nested database transaction deadlocked the cloud audio path** ("database is locked"): the permit check opens its own transaction and was called inside one. It now runs after the transaction closes.
+- **Two schema names clashed in the API** (Phase 06 `FactIn`/`FactOut`/`FactPatch` and the new canon facts), which renamed the Phase 06 types and broke the writing UI types. The canon contracts are now `CanonFact*`.
+- **A canon fact's value shared one text node with its Edit button**, so it could not be picked out on its own (found by the end-to-end test). The value now has its own element.
+- **Passage links selected one character too many** (the space before the sentence), seen in the visual check. Sentence offsets are now trimmed to the sentence.
+- **Buttons at the end of a form row stretched to fill their grid cell**, and the Phase 08 pages had no spacing between panels (visual check). Both fixed, with the button rule scoped to Phase 08 forms so earlier pages are unchanged.
+
+## Phase 09 handoff
+
+Preserve:
+- canon status and provenance, supersession, and fingerprinted decisions;
+- translation only from approved revisions, as proposals, with protected spans;
+- media engines opt-in, gated and honest about cost and compliance;
+- transcript immutability.
+
+Next candidates:
+- install and verify eSpeak NG, Piper and Whisper on a test machine;
+- a pronunciation lexicon;
+- MP3/M4B export via FFmpeg with chapter markers;
+- a waveform and seek view for transcripts;
+- a model-assisted continuity reviewer that only adds suggestions;
+- per-language publishing profiles for editions;
+- Phase 08 data in per-book backups (limitation 6).
+
+---
 
 ## Phase 07 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
 
@@ -829,6 +949,11 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 08: Advanced features (2026-11-23)
+- Built as described in "Phase 08: what was built" on `phase/08-advanced`.
+- OpenAI's audio API reference and guides were read on 2026-11-23 before the cloud engines were written (ADR-0009).
+- Checked end to end with Playwright (series, canon edit, contradiction, resolution kept, passage link, French edition, language links, narration with no engine) and by hand in the desktop browser pane.
 
 ### Phase 07: Publishing (2026-11-22)
 - Built as described in "Phase 07: what was built" on `phase/07-publishing`.

@@ -14,6 +14,7 @@ const WORKING: NavItem[] = [
   { to: "/new", label: "New book" },
   { to: "/import", label: "Import" },
   { to: "/manuscripts", label: "Manuscripts" },
+  { to: "/series", label: "Series" },
   { to: "/knowledge", label: "Knowledge" },
   { to: "/publishing", label: "Publishing" },
   { to: "/jobs", label: "AI jobs" },

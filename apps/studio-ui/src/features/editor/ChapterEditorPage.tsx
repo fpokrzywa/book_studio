@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Link, useBlocker, useParams } from "react-router";
+import { Link, useBlocker, useParams, useSearchParams } from "react-router";
 import type { ChapterContent, ChapterStatus } from "../../api/client";
 import { ApiError } from "../../api/client";
 import {
@@ -20,6 +20,7 @@ import { EmptyState, ErrorState, InlineError, Loading } from "../../components/S
 import { absoluteTime, CHAPTER_STATUSES, relativeTime, words } from "../../lib/format";
 import { useProposals } from "../../api/ai";
 import { AiAssistPanel } from "../ai/AiAssistPanel";
+import { ChapterTranslations } from "../advanced/TranslationsPage";
 import { HistoryPanel } from "./HistoryPanel";
 import { SourceEditor, type SourceEditorHandle } from "./SourceEditor";
 
@@ -145,6 +146,15 @@ function Editor({
   const updateChapter = useUpdateChapter(projectId);
   const preview = usePreview(projectId);
   const editor = useRef<SourceEditorHandle>(null);
+  // A link such as a continuity finding can open the chapter with a passage selected: ?select=start-end
+  const [searchParams] = useSearchParams();
+  const selectParam = searchParams.get("select");
+  useEffect(() => {
+    const m = /^(\d+)-(\d+)$/.exec(selectParam ?? "");
+    if (!m) return;
+    const t = window.setTimeout(() => editor.current?.select(Number(m[1]), Number(m[2])), 50);
+    return () => window.clearTimeout(t);
+  }, [selectParam]);
 
   const draftMatches = initial.draft != null && initial.draft.base_revision_no === initial.revision_no;
   const [base, setBase] = useState<ChapterContent>(initial);
@@ -566,6 +576,8 @@ function Editor({
         typed. Changes are autosaved as a draft; Save (Ctrl+S, or Cmd+S on a Mac) keeps a new revision.
         Tables, math ($…$), citations ([@key]), footnotes ([^1]) and images are supported.
       </p>
+
+      <ChapterTranslations projectId={projectId} chapterId={chapterId} />
 
       <div id={`${id}-ai`} hidden={!aiOpen}>
         {aiOpen ? (

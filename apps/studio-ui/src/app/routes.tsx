@@ -20,6 +20,9 @@ import { LibraryPage } from "../features/library/LibraryPage";
 import { ManuscriptsPage } from "../features/manuscripts/ManuscriptsPage";
 import { NewBookPage } from "../features/project/NewBookPage";
 import { ProjectPage } from "../features/project/ProjectPage";
+import { NarrationPage, RecordingsPage } from "../features/advanced/MediaPages";
+import { TranslationsPage } from "../features/advanced/TranslationsPage";
+import { SeriesHome, SeriesPage } from "../features/series/SeriesPages";
 import { AppShell } from "./AppShell";
 
 function NotFound() {
@@ -56,6 +59,11 @@ export const routes: RouteObject[] = [
       { path: "help", element: <HelpPage /> },
       { path: "publishing", element: <PublishingHome /> },
       { path: "projects/:projectId/publish", element: <PublishPage /> },
+      { path: "series", element: <SeriesHome /> },
+      { path: "series/:seriesId", element: <SeriesPage /> },
+      { path: "projects/:projectId/translations", element: <TranslationsPage /> },
+      { path: "projects/:projectId/narration", element: <NarrationPage /> },
+      { path: "projects/:projectId/recordings", element: <RecordingsPage /> },
       { path: "ai-settings", element: <AiSettingsPage /> },
       { path: "jobs", element: <JobsPage /> },
       { path: "*", element: <NotFound /> },

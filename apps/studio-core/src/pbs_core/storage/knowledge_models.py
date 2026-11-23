@@ -187,6 +187,8 @@ class AuthorProfile(Base):
     metrics_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="{}")
     examples_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="[]")
     corrections_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="[]")
+    pen_name: Mapped[str | None] = mapped_column(Text)
+    voice_rules_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="[]")
     analyzed_at: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)
     updated_at: Mapped[str] = mapped_column(Text, nullable=False)

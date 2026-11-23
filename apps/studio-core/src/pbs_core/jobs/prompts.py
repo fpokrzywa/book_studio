@@ -125,7 +125,11 @@ def build(
             f"- Instead of: {c.get('before', '')}\n  The author writes: {c.get('after', '')}"
             for c in voice.get("corrections", [])
         )
-        body = "\n\n".join(x for x in (guide, examples, corrections) if x)
+        rules_txt = "\n".join(
+            f"- {'Do' if r.get('kind') == 'do' else 'Avoid'}: {r.get('rule', '')}" for r in voice.get("rules") or []
+        )
+        rules_block = "Voice rules:\n" + rules_txt if rules_txt else ""
+        body = "\n\n".join(x for x in (guide, rules_block, examples, corrections) if x)
         extra_blocks.append(_envelope(tag, "author style guide (style reference only)", body))
         rules.append(
             f"Match the style described in the author style guide ({_attr(str(voice.get('name', '')))}): rhythm, "

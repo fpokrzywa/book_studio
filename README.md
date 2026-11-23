@@ -192,6 +192,26 @@ $env:PBS_OPENAI_API_KEY = "<your key>"; apps\studio-core\.venv\Scripts\python.ex
 - **Optional EPUBCheck.** EPUB validation needs EPUBCheck (Java). Install it, or set `PBS_EPUBCHECK_JAR`; without it the report says "unavailable", never "passed".
 - **KDP rules** are rule set `kdp-paperback-2026-11-22`, checked against KDP's help pages on 2026-11-22. The sources are in `docs/ADR/0008-publishing.md`.
 
+## Series, translations, narration and interviews (Phase 08)
+
+- **Series** (menu): group books that share a world. The story bible holds characters, places, plot threads, events and terms, with facts and relationships. Anything added by AI or imported from a book's story notes stays a *suggestion* until you approve it. **Continuity review** compares each chapter with approved canon and links every question to its passage; you decide each one (fix the text, update canon, or leave it as intended), and your decision is kept when you run the check again. The relationship map is a picture of the list beside it.
+- **Pen names**: on **Author voice**, give a profile a pen name and do/avoid rules. The book page shows which voice the book uses and lets you change it.
+- **Translations** (on a book): make an edition in another language. It is a separate book linked chapter by chapter. Only approved chapters are translated; the original is never changed; code, math, citations and links are protected. The result is a suggestion you accept or reject, with idioms and terms flagged to check.
+- **Narration** (on a book, optional): prepare a speech-ready script of each chapter; make audio only after you turn narration on and choose an engine; export WAV files with chapter timing, a cue sheet and notes on cost, licensing and AI-voice disclosure. The export is **not** checked against ACX, Audible or KDP audiobook requirements.
+- **Recorded interviews** (on a book): import audio you own, transcribe it with the engine you choose, correct speaker names, and keep chosen passages, with timestamps, as sources.
+
+### Optional tools (none is required)
+
+| Tool | Used for | How PBS finds it |
+|---|---|---|
+| [eSpeak NG](https://github.com/espeak-ng/espeak-ng) (GPL-3.0) | narration on this computer | `espeak-ng` on PATH |
+| [Piper](https://github.com/rhasspy/piper) (MIT; each voice has its own licence) | narration on this computer | `piper` on PATH and `PBS_PIPER_MODEL` set to a voice model file |
+| [openai-whisper](https://github.com/openai/whisper) (MIT) and [FFmpeg](https://ffmpeg.org) | transcription on this computer | `whisper` (and `ffmpeg`) on PATH |
+| OpenAI speech and transcription (cloud) | narration and transcription | an OpenAI provider in AI settings, cloud mode on, and the book allowed to use it |
+| EPUBCheck (Java) | EPUB validation (Phase 07) | `PBS_EPUBCHECK_JAR` or `epubcheck` on PATH |
+
+Without these tools, the features still open: the narration script is prepared and readable, and each page says which engine is missing and how to install it. In local-only mode cloud engines are refused before anything is sent. **Narration → Speech engine** and the recordings page show what this computer has.
+
 ## Sources, evidence, voice and interviews (Phase 04)
 
 - **Sources.** Open a book, then **Sources**, and add Markdown, text, HTML, Word or text-based PDF files. Each is kept unchanged and split into passages you can search; matched words are highlighted and every hit says why it matched. Turn **Use for AI** off to keep a source out of new AI suggestions, or **Remove** it. **Knowledge** in the menu holds shared libraries that books can opt in to.

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -64,6 +65,8 @@ def _out(s: Session, p: AuthorProfile) -> AuthorProfileOut:
         analysis_note=metrics.get("message"),
         analyzed_at=p.analyzed_at,
         created_at=p.created_at,
+        pen_name=p.pen_name,
+        voice_rules=json.loads(p.voice_rules_json or "[]"),
     )
 
 
@@ -206,4 +209,56 @@ def for_prompt(ctx: AppContext, profile_id: str) -> dict[str, object] | None:
             "guide": p.style_guide_md,
             "examples": [e["text"] for e in json.loads(p.examples_json or "[]")][:5],
             "corrections": json.loads(p.corrections_json or "[]")[:10],
+            "rules": json.loads(p.voice_rules_json or "[]")[:50],
+            "pen_name": p.pen_name,
         }
+
+
+# ---------- Phase 08: pen names, voice rules and the voice active for a book ----------
+
+
+def set_pen_name(ctx: AppContext, profile_id: str, data: Any) -> AuthorProfileOut:
+    """Pen name and editable do/avoid rules. Rules go to the model with the style guide."""
+    with ctx.db.tx() as s:
+        p = _require(s, profile_id)
+        p.pen_name = (data.pen_name or "").strip() or None
+        p.voice_rules_json = json.dumps([r.model_dump() for r in data.voice_rules], ensure_ascii=False)
+        p.updated_at = ctx.clock.iso()
+        s.flush()
+        return _out(s, p)
+
+
+def project_voice(ctx: AppContext, project_id: str) -> Any:
+    from pbs_core.contracts_advanced import ProjectVoiceOut
+    from pbs_core.services.projects import require_project
+    from pbs_core.storage.planning_models import BookBrief
+
+    with ctx.db.tx() as s:
+        require_project(s, project_id)
+        b = s.get(BookBrief, project_id)
+        p = s.get(AuthorProfile, b.author_profile_id) if b and b.author_profile_id else None
+        return ProjectVoiceOut(
+            project_id=project_id,
+            author_profile_id=p.id if p else None,
+            profile_name=p.name if p else None,
+            pen_name=p.pen_name if p else None,
+            voice_rules=json.loads(p.voice_rules_json or "[]") if p else [],
+            has_style_guide=bool(p and p.style_guide_md.strip()),
+            used_for="Chapter drafting from the outline, and 'Rewrite in a voice' when you choose it."
+            if p
+            else "No voice is set for this book: drafts follow the brief's tone only.",
+        )
+
+
+def set_project_voice(ctx: AppContext, project_id: str, profile_id: str | None) -> Any:
+    from pbs_core.services import planning
+    from pbs_core.services.projects import require_active
+
+    with ctx.db.tx() as s:
+        project = require_active(s, project_id)
+        if profile_id:
+            _require(s, profile_id)
+        b = planning._ensure_brief(s, ctx, project)
+        b.author_profile_id = profile_id
+        b.updated_at = ctx.clock.iso()
+    return project_voice(ctx, project_id)

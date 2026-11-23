@@ -283,8 +283,25 @@ Each transition is written in one transaction together with a `job_log` row.
 ### 3.8 Claim (evidence ledger, Phase 04)
 `unverified → supported (≥1 claim_support, human-confirmed) | disputed | removed`. AI may *propose* supports but cannot mark a claim `supported`.
 
-### 3.9 Canon fact (Phase 08)
-`suggested → canon (author approves) | rejected`. Only `canon` facts are used as continuity ground truth.
+### 3.9 Canon fact (Phase 08, as built)
+`suggested → canon (author approves) | rejected`. Only `canon`, not-superseded facts are used as continuity ground truth and in prompts. Changing a canon value writes a new row; the old row gets `superseded_by` (history is kept).
+
+### 3.10 Phase 08 tables (migration `0009_advanced`)
+
+| Table | Purpose and key rules |
+|---|---|
+| `series`, `series_book` | A series and its books in reading order; a book belongs to at most one series |
+| `canon_entity` | Character, location, plot thread, event, term or other: name, aliases, summary, `status` (canon, suggested, rejected), `origin` (author, ai_suggested, book_note), `provenance_json` |
+| `canon_fact` | Attribute and value of an entity, optional story time and the book it was established in; status, origin, provenance; `superseded_by` |
+| `canon_relationship` | "A is B's <label>", with status, origin and provenance |
+| `continuity_issue` | A finding: rule, message, excerpt, `start`/`end` offsets in the chapter revision, found value, canon references. `fingerprint` (unique per series) keeps the author's decision (`open`, `keep_canon`, `canon_updated`, `intended`, plus a note) across re-runs; `present` says whether the last run still found it |
+| `translation_edition` | Source book → target book (a normal project) in one language, with the author's term list; unique per source and language |
+| `chapter_translation` | Target chapter → source chapter and the source revision translated; status, job, proposal, suggested title, review items |
+| `narration_chunk` | A speech-ready part of one chapter revision: text, block IDs (alignment), notes, status, engine, voice, audio path, duration, cost (null = unknown) |
+| `recording` | An imported interview: original file, title, type, duration, rights note, transcription status, engine and model |
+| `transcript_segment` | Start and end (ms), speaker (editable), the engine's speaker label, text, and the source a quotation went into. **Text and timestamps are immutable** (trigger `transcript_segment_immutable`) |
+
+`author_profile` gains `pen_name` and `voice_rules_json`.
 
 ## 4. Editing document schema: BookMD and BDM
 

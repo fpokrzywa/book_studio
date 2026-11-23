@@ -10,6 +10,7 @@ import "./styles/knowledge.css";
 import "./styles/planning.css";
 import "./styles/writing.css";
 import "./styles/publishing.css";
+import "./styles/advanced.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";

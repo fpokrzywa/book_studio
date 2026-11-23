@@ -254,6 +254,18 @@ Section and review jobs run on the same job runner through `jobs/writing_exec.py
 
 `services/publishing.py` stores every build as a `publication` with its report and serves previews and files. See ADR-0008. Typst, python-docx and Pillow are runtime dependencies.
 
+### 7.6 Advanced layer (Phase 08)
+- **`pbs_core.series.continuity`**: deterministic canon checks (traits, age, death, kinship) and the chronology order.
+- **`services/series.py`**: series, canon with provenance and supersession, review with fingerprints, and resolutions.
+- **`pbs_core.translation.protect`**: masking for translation and post-translation checks.
+- **`jobs/translation_exec.py`**: a durable job whose result is a proposal on the edition's chapter. `jobs/execute.py` dispatches by job kind.
+- **`services/translation.py`**: editions as linked books with mirrored chapters, the approval rule, and chapter links.
+- **`pbs_core.media`**:
+  - `engines`: speech and transcription engines (local CLIs, OpenAI through the egress gate, dev-only test engines);
+  - `narration`: speech-ready parts from the document model, with block IDs.
+- **`services/media.py`**: narration settings, scripts, synchronous synthesis of the next parts, the WAV/cue/JSON export, recordings, transcripts, speaker correction, and quotations as knowledge sources.
+- **Routes**: `api/routes_series.py` and `api/routes_advanced.py`. UI: `features/series`, `features/advanced`. See ADR-0009.
+
 ## 8. Frontend architecture
 
 - React 19 + TypeScript (strict) + Vite. React Router (declarative routes). TanStack Query for server state; no global client store unless needed.

@@ -255,6 +255,8 @@ class AuthorProfileOut(BaseModel):
     analysis_note: str | None
     analyzed_at: str | None
     created_at: str
+    pen_name: str | None = None
+    voice_rules: list[dict[str, str]] = Field(default_factory=list, description="Editable do/avoid rules")
 
 
 class AuthorProfileCreate(_Model):

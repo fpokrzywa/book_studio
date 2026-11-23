@@ -78,6 +78,8 @@ def planning_answer(schema: dict[str, object], prompt: str) -> str | None:
         return None
     if "facts" in props and "text" in props:
         return _section_answer(prompt)
+    if "notes" in props and "title" in props:
+        return _translation_answer(prompt)
     if "findings" in props:
         return _review_answer(prompt)
     fiction = "Kind of book: fiction" in prompt
@@ -213,3 +215,33 @@ def _review_answer(prompt: str) -> str:
         {"check": "unsupported_claim", "quote": "A sentence that is not in the chapter at all.", "message": "Invented."}
     )
     return json.dumps({"findings": findings})
+
+
+def _translation_answer(prompt: str) -> str:
+    """A labelled stand-in translation that keeps every placeholder (or drops one on [[mock:drop_code]])."""
+    import json
+
+    def env(label: str) -> str:
+        m = re.search(rf'<pbs-data-[0-9a-f]+ label="{label}"[^>]*>\n(.*?)\n</pbs-data-', prompt, re.S)
+        return m.group(1) if m else ""
+
+    lang = _field(prompt, "Target language") or "xx"
+    body = env("source text")
+    if "[[mock:drop_code]]" in prompt:
+        body = re.sub(r"⟦KEEP-\d+⟧", "", body, count=1)
+    title = env("chapter title").strip()
+    first = " ".join(body.split()[:3])
+    return json.dumps(
+        {
+            "title": f"[{lang}] {title}",
+            "text": f"[Test translation into {lang}, not a real translation]\n\n{body}",
+            "notes": [
+                {
+                    "kind": "idiom",
+                    "source": first,
+                    "note": "[Test model output] Check whether this phrase is idiomatic.",
+                }
+            ],
+        },
+        ensure_ascii=False,
+    )

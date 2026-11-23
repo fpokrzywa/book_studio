@@ -159,6 +159,16 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
 - **Code is never executed** (ADR-0007), and EPUBCheck runs only if the author installed it.
 - **Files are written with `safe_join`** under the project's workspace folder. Package file downloads are limited to names in the package manifest.
 
+## 7g. Phase 08 controls as built (details: ADR-0009)
+
+- **Cloud audio uses the same gate as text.** OpenAI speech and transcription go through `gated_client` with a permit from `registry.permit_for`: cloud mode, the book's consent for that provider, and a key from the OS credential store. The service checks the permit **before** building a request and returns 409 with the reason; nothing is sent. A test proves that in local-only mode the egress counter and the mock transport see no request.
+- **Opt-in engines only.** Narration is off per book until the author turns it on and picks an engine. Transcription runs only with the engine the author picks. Local engines run only if the author installed them. The built-in test engines exist only in dev and test (`env != "prod"`) and label their output as silence or "not real speech".
+- **Subprocesses** (espeak-ng, piper, whisper) get an argument list (no shell), a private temporary folder, the text on stdin, and a timeout. Their output is read from that folder only.
+- **Recordings are the author's.** Import requires a rights confirmation and real audio (magic bytes). The file is stored read-only, content-addressed. Transcript text and timestamps are immutable (database trigger). Quotations are copied verbatim with timestamps, and PBS never writes or edits speech text.
+- **Canon is the author's.** AI and imported notes stay "suggested" until approved, with provenance. Continuity review reads chapters and never writes them. Translation reads an approved source revision and writes only a proposal on the edition's chapter. Protected content (code, math, citations, links) is masked, and a reply that alters it is discarded.
+- **No invented costs or compliance.** Audio cost comes only from a price the author enters (otherwise "unknown"). Exports state the AI-voice disclosure and that they are not checked against ACX/Audible/KDP audiobook rules.
+- **Downloads are confined.** Audio export names must match a strict pattern, and every file path goes through `safe_join`.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

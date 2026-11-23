@@ -94,6 +94,10 @@ def _prepare_section(ctx: AppContext, job_id: str, inp: dict[str, Any]) -> Prepa
                 x
                 for x in (
                     str(voice.get("guide") or ""),
+                    "\n".join(
+                        f"- {'Do' if r.get('kind') == 'do' else 'Avoid'}: {r.get('rule', '')}"
+                        for r in voice.get("rules") or []  # type: ignore[attr-defined]
+                    ),
                     "\n".join(f"- {e}" for e in voice.get("examples", [])),  # type: ignore[attr-defined]
                 )
                 if x

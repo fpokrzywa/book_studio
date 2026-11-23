@@ -179,4 +179,6 @@ def fact_items(s: Session, project_id: str) -> list[str]:
                 continue
         usable.append(f)
     usable.sort(key=lambda f: 0 if f.status in ("confirmed", "resolved") else 1)
-    return [fact_line(f) for f in usable]
+    from pbs_core.services import series  # approved canon shared by every book of the series comes first
+
+    return series.canon_lines(s, project_id) + [fact_line(f) for f in usable]

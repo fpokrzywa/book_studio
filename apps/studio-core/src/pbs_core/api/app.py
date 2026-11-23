@@ -10,10 +10,12 @@ from fastapi import FastAPI
 from pbs_core import __version__
 from pbs_core.api import errors
 from pbs_core.api.routes import api, health
+from pbs_core.api.routes_advanced import router as advanced_router
 from pbs_core.api.routes_ai import router as ai_router
 from pbs_core.api.routes_knowledge import router as knowledge_router
 from pbs_core.api.routes_planning import router as planning_router
 from pbs_core.api.routes_publishing import router as publishing_router
+from pbs_core.api.routes_series import router as series_router
 from pbs_core.api.routes_writing import router as writing_router
 from pbs_core.config import Settings
 from pbs_core.context import AppContext, build_context
@@ -66,6 +68,8 @@ def create_app(
     app.include_router(planning_router)
     app.include_router(writing_router)
     app.include_router(publishing_router)
+    app.include_router(series_router)
+    app.include_router(advanced_router)
     if ctx is not None:
         token = ctx.token
         app.add_middleware(
