@@ -120,6 +120,9 @@ Legend: ✅ low risk · ⚠ verify · ⛔ avoid
 
 ## 6. Python sidecar bundling constraints (Phase 10 preview)
 
+> Superseded by ADR-0010 (2026-11-23): the studio is now a self-hosted web application and no desktop
+> sidecar is planned. This section is kept for the record.
+
 1. A separate PyInstaller build per target triple (`x86_64-pc-windows-msvc`, `aarch64-apple-darwin`, `x86_64-apple-darwin`). Tauri's `externalBin` requires the `-<target-triple>` suffix.
 2. Native libs (Pango/cairo/harfbuzz/fontconfig for WeasyPrint) must be collected and, on macOS, each dylib codesigned with hardened runtime before notarization.
 3. Startup time of a onedir bundle (~1–3 s) needs a splash/"starting" state in the shell.
@@ -135,9 +138,24 @@ Legend: ✅ low risk · ⚠ verify · ⛔ avoid
 - (−) PDF engine installation on Windows is the biggest practical hurdle. It is de-risked by a Phase 02 spike.
 - (−) Markdown-source editing may feel less friendly than WYSIWYG. ADR-0002 revisits this after the fidelity suite exists.
 
+## 7a. Addendum: versions as installed in Phase 01 (2026-11-22)
+
+Validation item 1 is resolved: every Phase 01 dependency installed from wheels on CPython 3.12.13 (win-x64). Pinned by lockfiles (`apps/studio-core/uv.lock`, `pnpm-lock.yaml`). Notable versions and constraints:
+
+| Area | Installed | Note |
+|---|---|---|
+| Backend | FastAPI 0.165, Starlette 1.10, Pydantic 2.14, SQLAlchemy 2.1.9, Alembic 1.20, structlog 26.1, markdown-it-py 4.3, uvicorn 0.54 | Starlette's TestClient warns that httpx support is deprecated (filtered in tests; revisit when it is removed) |
+| Frontend | React 19.3, React Router 8.5 (data router; `useBlocker` for unsaved-changes guard), TanStack Query 5, React Aria Components 1.22, Vite 8.3, Vitest 5.1 | |
+| TypeScript | **6.0.3, not 7.x** | typescript-eslint 8.73 supports `typescript <6.1`. TS 7 (native compiler) waits until the lint toolchain supports it |
+| ESLint | **9.39, not 10.x** | eslint-plugin-jsx-a11y 6.10 peers on ESLint ≤9 |
+| E2E | Playwright 1.65 (Chromium 159), @axe-core/playwright | |
+| Fonts | Literata (variable), Atkinson Hyperlegible: SIL OFL, bundled via Fontsource | |
+
+Environment finding: `uv` must use `UV_LINK_MODE=copy` on this machine. Hard links from the C: cache to the S: repo fail with OS error 396. All scripts set it.
+
 ## 8. Validation required (tracked in BUILD_STATE)
 
-1. ⚠ Python 3.12 vs 3.13 pin: confirm wheels for every dependency on win-x64 / mac-arm64 (Phase 01).
+1. ✔ (win-x64, Phase 01) / ⚠ mac-arm64 still unverified: Python 3.12 wheels for every dependency.
 2. ⚠ WeasyPrint on this Windows machine (MSYS2 Pango vs standalone exe) (Phase 02 spike).
 3. ⚠ ziamath / latex2mathml quality on the math fixtures (Phase 02 spike).
 4. ⚠ Pandoc version and `--sandbox` behavior with images in DOCX (Phase 02 spike).

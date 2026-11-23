@@ -1,0 +1,247 @@
+"""How the built-in test model (not AI) answers when a prompt carries sources or interview answers.
+
+It cites the way a well-behaved model should, so the citation pipeline can be tested offline:
+``[[mock:fake_cite]]`` adds a citation to a passage that was never provided, and ``[[mock:obey]]``
+simulates a compromised model that repeats a source passage verbatim (including any injected text).
+"""
+
+from __future__ import annotations
+
+import re
+
+_ENVELOPE = re.compile(
+    r'<pbs-data-[0-9a-f]+ label="(source S\d+|interview answer I\d+)"[^>]*>\n(.*?)\n</pbs-data-', re.S
+)
+
+
+def _first_sentence(text: str) -> str:
+    one = " ".join(text.split())
+    m = re.match(r"(.+?[.!?])(\s|$)", one)
+    return (m.group(1) if m else one)[:300]
+
+
+def with_knowledge(text: str, prompt: str) -> str:
+    found = _ENVELOPE.findall(prompt)
+    if not found:
+        return text
+    paras = [text]
+    sources = [(lbl.split()[-1], body) for lbl, body in found if lbl.startswith("source")]
+    answers = [(lbl.split()[-1], body) for lbl, body in found if lbl.startswith("interview")]
+    if sources:
+        label, body = sources[0]
+        line = f"The source says: {_first_sentence(body)} [[{label}]]"
+        if "[[mock:fake_cite]]" in prompt:
+            line += " A further detail comes from elsewhere. [[S9]]"
+        paras.append(line)
+    if answers:
+        label, body = answers[0]
+        paras.append(f"In the author's words: {_first_sentence(body)} [[{label}]]")
+    if "[[mock:obey]]" in prompt and sources:
+        paras.append(" ".join(sources[0][1].split()))
+    paras.append("This closing paragraph has no source behind it.")
+    return "\n\n".join(paras)
+
+
+# ---------- planning answers (outline, research brainstorm) ----------
+
+_FOCUS = [
+    "Foundations",
+    "First Steps",
+    "Tools",
+    "Common Mistakes",
+    "Practice",
+    "Troubleshooting",
+    "Going Further",
+    "Case Study",
+    "Review",
+    "Next Steps",
+    "Reference",
+    "Afterword",
+]
+
+
+def _field(prompt: str, label: str) -> str:
+    m = re.search(rf"{label}:\s*(.+)", prompt)
+    return m.group(1).strip() if m else ""
+
+
+def planning_answer(schema: dict[str, object], prompt: str) -> str | None:
+    """Deterministic outline or research items when the schema asks for them; None otherwise.
+
+    ``[[mock:metrics]]`` makes the brainstorm claim fabricated market figures, so the guard that removes
+    unsupported metrics can be tested.
+    """
+    import json
+
+    props = schema.get("properties") if isinstance(schema, dict) else None
+    if not isinstance(props, dict):
+        return None
+    if "facts" in props and "text" in props:
+        return _section_answer(prompt)
+    if "notes" in props and "title" in props:
+        return _translation_answer(prompt)
+    if "findings" in props:
+        return _review_answer(prompt)
+    fiction = "Kind of book: fiction" in prompt
+    if "chapters" in props:
+        try:
+            n = int(_field(prompt, "Desired number of chapters").split()[0])
+        except (ValueError, IndexError):
+            n = 5
+        n = max(1, min(n, 40))
+        try:
+            total = int(_field(prompt, "Target length").split()[0])
+        except (ValueError, IndexError):
+            total = 30000
+        promise = _field(prompt, "Core promise") or "the book's promise"
+        chapters = []
+        for k in range(1, n + 1):
+            focus = _FOCUS[(k - 1) % len(_FOCUS)]
+            sections = (
+                [
+                    {"title": "Opening scene", "goal": "Set the place and the pressure."},
+                    {"title": "Turn", "goal": "Something changes for the main character."},
+                ]
+                if fiction
+                else [
+                    {"title": f"Why {focus.lower()} matters", "goal": "Show the reader the problem."},
+                    {"title": f"How to approach {focus.lower()}", "goal": "Give steps the reader can follow."},
+                ]
+            )
+            chapters.append(
+                {
+                    "title": f"{focus}",
+                    "goal": f"[Test model output, not AI] Move the reader toward: {promise[:120]} (part {k} of {n}).",
+                    "target_words": max(500, total // n),
+                    "sections": sections,
+                    "requirements": ["Introduce the main character"]
+                    if fiction
+                    else ["Back each factual claim with a source"],
+                }
+            )
+        return json.dumps({"chapters": chapters})
+    if "items" in props:
+        what = "keyword" if "KDP keyword" in prompt else ("query" if "search queries" in prompt else "topic")
+        items = []
+        for i in range(1, 4):
+            rationale = f"[Test model output, not AI] Reason {i} for this {what}."
+            if "[[mock:metrics]]" in prompt:
+                rationale += (
+                    " This phrase gets 12,000 monthly searches with low competition. Top books have a BSR under 5,000."
+                )
+            items.append({"text": f"Test {what} {i}", "rationale": rationale})
+        if "[[mock:metrics]]" in prompt:
+            items.append({"text": "A bestseller niche worth $2 million a year", "rationale": "High demand."})
+        return json.dumps({"items": items})
+    return None
+
+
+# ---------- writing pipeline answers (one section, AI review) ----------
+
+
+def _section_answer(prompt: str) -> str:
+    """A deterministic section: labelled test text, the knowledge citation paragraphs, a summary, facts.
+
+    ``[[mock:conflict]]`` in a section goal makes the extracted facts contradict earlier ones, so the
+    continuity check can be tested.
+    """
+    import json
+
+    title = _field(prompt, "Section title") or "this section"
+    chapter = _field(prompt, "Chapter") or "this chapter"
+    m = re.search(r"Section (\d+) of (\d+)", prompt)
+    no = m.group(1) if m else "1"
+    body = (
+        f"[Test model output, not AI] Section {no} of “{chapter}”: {title}. "
+        f"This text stands in for a real draft of the section and says nothing factual."
+    )
+    text = with_knowledge(body, prompt)
+    fiction = "In 'facts', list characters" in prompt
+    conflict = "[[mock:conflict]]" in prompt
+    facts: list[dict[str, str]] = []
+    if fiction:
+        facts.append(
+            {
+                "kind": "character",
+                "name": "Mara",
+                "attribute": "eye colour",
+                "value": "brown" if conflict else "green",
+                "story_time": "",
+            }
+        )
+        facts.append(
+            {
+                "kind": "event",
+                "name": f"{title} ({chapter})",
+                "attribute": "",
+                "value": f"Happens in {title}.",
+                "story_time": "1990" if conflict else f"199{no}",
+            }
+        )
+    else:
+        facts.append(
+            {
+                "kind": "term",
+                "name": title[:60],
+                "attribute": "definition",
+                "value": f"Introduced in “{chapter}”.",
+                "story_time": "",
+            }
+        )
+    return json.dumps(
+        {"text": text, "summary": f"[Test model output] Covers “{title}” in “{chapter}”.", "facts": facts},
+        ensure_ascii=False,
+    )
+
+
+def _review_answer(prompt: str) -> str:
+    """One real quote from the chapter text and one invented quote (which PBS must drop)."""
+    import json
+
+    m = re.search(r'<pbs-data-[0-9a-f]+ label="chapter text"[^>]*>\n(.*?)\n</pbs-data-', prompt, re.S)
+    body = m.group(1) if m else ""
+    first = ""
+    for para in re.split(r"\n\s*\n", body):
+        p = " ".join(para.split())
+        if p and not p.startswith(("#", "```", "|")):
+            first = _first_sentence(p)
+            break
+    findings = []
+    if first:
+        findings.append(
+            {"check": "clarity", "quote": first, "message": "[Test model output] This sentence could be clearer."}
+        )
+    findings.append(
+        {"check": "unsupported_claim", "quote": "A sentence that is not in the chapter at all.", "message": "Invented."}
+    )
+    return json.dumps({"findings": findings})
+
+
+def _translation_answer(prompt: str) -> str:
+    """A labelled stand-in translation that keeps every placeholder (or drops one on [[mock:drop_code]])."""
+    import json
+
+    def env(label: str) -> str:
+        m = re.search(rf'<pbs-data-[0-9a-f]+ label="{label}"[^>]*>\n(.*?)\n</pbs-data-', prompt, re.S)
+        return m.group(1) if m else ""
+
+    lang = _field(prompt, "Target language") or "xx"
+    body = env("source text")
+    if "[[mock:drop_code]]" in prompt:
+        body = re.sub(r"⟦KEEP-\d+⟧", "", body, count=1)
+    title = env("chapter title").strip()
+    first = " ".join(body.split()[:3])
+    return json.dumps(
+        {
+            "title": f"[{lang}] {title}",
+            "text": f"[Test translation into {lang}, not a real translation]\n\n{body}",
+            "notes": [
+                {
+                    "kind": "idiom",
+                    "source": first,
+                    "note": "[Test model output] Check whether this phrase is idiomatic.",
+                }
+            ],
+        },
+        ensure_ascii=False,
+    )

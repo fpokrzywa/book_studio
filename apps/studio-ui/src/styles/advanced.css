@@ -1,0 +1,224 @@
+/* Phase 08: series canon, continuity, translations, narration and recordings. */
+
+.series-books {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: var(--space-5);
+}
+.series-books li::marker {
+  font-family: var(--font-text);
+  color: var(--ink-soft);
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.form-row.compact {
+  gap: var(--space-2);
+  align-items: end;
+}
+.field.grow {
+  flex: 1 1 18rem;
+}
+
+/* Story bible: canon reads as settled ink, suggestions as pencil in the margin. */
+.canon-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-5);
+}
+.canon-card {
+  border-top: 1px solid var(--rule);
+  padding-top: var(--space-4);
+}
+.canon-card h3 {
+  font-family: var(--font-text);
+  font-size: var(--step-2);
+  margin: 0 0 var(--space-2);
+}
+.canon-card[data-status="suggested"],
+tr[data-status="suggested"] {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    color-mix(in srgb, var(--gilt-wash) 70%, transparent) 6px 7px
+  );
+}
+.canon-card[data-status="rejected"] h3 {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+.tag.canon-canon {
+  border-color: var(--cloth);
+  color: var(--cloth);
+}
+.tag.canon-suggested {
+  border-style: dashed;
+  border-color: var(--gilt);
+  color: var(--gilt);
+}
+.provenance {
+  font-size: var(--step--1);
+  font-style: italic;
+}
+
+/* Continuity questions */
+.issue-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.issue-card {
+  background: var(--leaf);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--gilt);
+  border-radius: var(--radius-m);
+  padding: var(--space-4) var(--space-5);
+}
+.issue-card[data-state="intended"],
+.issue-card[data-state="canon_updated"],
+.issue-card[data-state="keep_canon"] {
+  border-left-color: var(--cloth);
+}
+.issue-where {
+  font-size: var(--step--1);
+  margin: 0 0 var(--space-2);
+}
+.excerpt {
+  font-family: var(--font-text);
+  margin: var(--space-3) 0;
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--rule);
+  color: var(--ink);
+}
+
+/* Relationship map: names set in the book face on a faint ring, like a genealogy on an endpaper. */
+.rel-list {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+}
+.rel-map {
+  margin: 0;
+}
+.rel-map svg {
+  width: 100%;
+  height: auto;
+  max-height: 34rem;
+  background: var(--endpaper);
+  border-radius: var(--radius-m);
+}
+.rel-ring {
+  fill: none;
+  stroke: var(--rule);
+  stroke-dasharray: 2 6;
+}
+.rel-edge path {
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1.4;
+}
+.rel-edge.rel-suggested path {
+  stroke: var(--gilt);
+  stroke-dasharray: 5 4;
+}
+.rel-arrowhead {
+  fill: var(--ink-soft);
+}
+.rel-label {
+  font-family: var(--font-text);
+  font-style: italic;
+  font-size: 13px;
+  fill: var(--ink-soft);
+  paint-order: stroke;
+  stroke: var(--endpaper);
+  stroke-width: 4px;
+}
+.rel-node circle {
+  fill: var(--cloth);
+  stroke: var(--endpaper);
+  stroke-width: 3;
+}
+.rel-node.rel-suggested circle {
+  fill: var(--endpaper);
+  stroke: var(--gilt);
+  stroke-width: 2;
+}
+.rel-name {
+  font-family: var(--font-text);
+  font-size: 16px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+/* Translations */
+.translation-issues {
+  display: grid;
+  gap: var(--space-2);
+}
+.translation-issues li[data-state="reviewed"] {
+  color: var(--ink-soft);
+}
+.chapter-languages .tag {
+  margin-right: var(--space-1);
+}
+
+/* Narration and recordings */
+.engine-list {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: var(--space-5);
+}
+.engine-list li[data-available="false"] {
+  color: var(--ink-soft);
+}
+.script ol,
+.transcript {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: var(--space-5);
+}
+.script li[data-status="failed"] {
+  border-left: 3px solid var(--danger);
+  padding-left: var(--space-3);
+}
+.script audio,
+.panel > audio {
+  display: block;
+  width: min(100%, 28rem);
+  margin-top: var(--space-2);
+}
+.transcript details {
+  margin-top: var(--space-1);
+}
+.notes-text {
+  white-space: pre-wrap;
+  font-size: var(--step--1);
+  background: var(--leaf-sunk);
+  padding: var(--space-3);
+  border-radius: var(--radius-s);
+  max-height: 20rem;
+  overflow: auto;
+}
+.pen-name fieldset {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0;
+}
+.voice-rules {
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* Buttons that end a form row sit on the field baseline at their natural size. */
+.form-row.adv-row > .btn {
+  align-self: end;
+  justify-self: start;
+}

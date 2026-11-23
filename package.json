@@ -1,0 +1,20 @@
+{
+  "name": "personal-book-studio",
+  "private": true,
+  "description": "Personal Book Studio - local-first book authoring studio (workspace root)",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev:ui": "pnpm --filter studio-ui dev",
+    "build": "pnpm --filter studio-ui build",
+    "test:ui": "pnpm --filter studio-ui test",
+    "lint": "pnpm --filter studio-ui lint",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1"
+  }
+}
