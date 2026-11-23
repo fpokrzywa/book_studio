@@ -89,7 +89,9 @@ Not published by KDP (reported as manual checks, never invented): the exact barc
 - SECURITY §7f, DATA_MODEL §2.3d, ARCHITECTURE §7.5, TEST_PLAN §4.4d.
 - README "Publishing (Phase 07)".
 
-## Decisions taken in Phase 07 (need your validation)
+## Decisions taken in Phase 07 (signed off)
+
+Signed off by the user on 2026-11-22: all recommendations P7-1 to P7-10 below are accepted as recorded.
 
 | # | Decision | Why | Reversible? |
 |---|---|---|---|
