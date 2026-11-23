@@ -6,12 +6,122 @@
 
 | Field | Value |
 |---|---|
-| Current phase | **04: Knowledge sources, search, citations, evidence ledger, author voice, interviews: COMPLETE (pending user review)** |
-| Next phase | 05: Planning (brief, outline, research) |
-| Branch | `phase/04-knowledge`, stacked on `phase/03-ai-jobs` (PR #3), then Phase 02 (PR #2) and Phase 01 (PR #1). Nothing merged yet |
-| Schema | Alembic head `0005` (`0005_knowledge`, includes the FTS5 table). The dev workspace migrated 0004 → 0005 automatically, with a snapshot |
+| Current phase | **05: Project planning (wizard, brief, research, outline, skeleton, generation runs): COMPLETE (pending user review)** |
+| Next phase | 06 |
+| Branch | `phase/05-planning`, stacked on `phase/04-knowledge` (PR #4), then Phase 03 (PR #3), Phase 02 (PR #2) and Phase 01 (PR #1). Nothing merged yet. Phase 05 is not committed yet |
+| Schema | Alembic head `0006` (`0006_planning`). The dev workspace migrated 0005 → 0006 automatically, with a snapshot |
 | Platforms verified | Windows 11 x64 only. macOS is **not executed** |
 | Last updated | 2026-11-22 |
+
+## Phase 05 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
+
+Command: `powershell -ExecutionPolicy Bypass -File scripts\test.ps1` → **exit 0, "All checks passed."**
+
+| Check | Result |
+|---|---|
+| ruff lint / format (Core) | All checks passed / 129 files already formatted |
+| mypy `--strict` (98 source files) | Success: no issues found |
+| import-linter | 4 kept, 0 broken (the Open Library client lives in `pbs_core.providers`, behind the egress gate) |
+| pytest (Core) | **228 passed, 1 skipped, 3 xfailed**. The skip is the Ollama smoke test (no local Ollama). The xfails are golden steps owned by Phase 07. Step 05 now passes |
+| License gate | passed: 94 runtime dependencies (no new dependencies; Open Library is called with the existing `httpx2`) |
+| ESLint (jsx-a11y strict) + Prettier, TypeScript strict | clean |
+| Vitest + RTL + axe-core | **37 passed** (9 files; 2 new: `lib/outline.test.ts`, `Plan.test.tsx`) |
+| Vite production build | built |
+| Playwright + axe (WCAG 2.2 AA tags) | **13 passed** (2 new specs in `planning.spec.ts`) |
+
+### Prompt 05 acceptance → evidence
+
+| Acceptance item | Where it is proven |
+|---|---|
+| From a new idea, build and approve a detailed outline with a deterministic test adapter, without paid API access | pytest `test_idea_to_approved_outline_with_test_model` and golden step 05. Playwright "Phase 05 acceptance": New Book wizard → brief (prefilled from the wizard) → Approve brief → AI outline proposal from the built-in test model → Approve → Apply → three planned chapters. No API key exists in the test run, and the egress counter stays at zero |
+| Unsupported market metrics are never fabricated | `test_ai_brainstorm_cannot_carry_market_metrics`: the test model is made to claim sales rank, search volume and "bestseller" status (`[[mock:metrics]]`). Every such sentence is removed and flagged, and an item that was only a claim is dropped. Writing `metrics_json` on an AI row, or marking an AI finding measured, is refused **by DB CHECK constraints**. Also `test_ai_finding_cannot_become_measured`, `test_author_findings_separate_measured_from_heuristic` (an unsourced figure the author types is flagged `unsourced_metric` and shown as opinion), and `test_open_library_results_keep_bibliographic_data_only` (reading-log and rating fields are never requested or kept) |
+| An approved outline becomes a durable chapter skeleton; a changed outline does not destroy prose or revision history | `test_changed_outline_keeps_prose_history_and_locks`: write prose → rename, move and remove nodes → approve v2 → apply. The chapter with prose is renamed with its text and revisions intact, the removed chapter with prose is **kept** and reported, the empty one is archived, and the locked one is untouched. `test_ai_regeneration_never_overwrites_draft_and_keeps_locked`. Playwright: prose and History survive a rename and a removal |
+| Fail-safe behaviour on an unavailable research provider is explicit | `test_research_provider_off_blocked_or_down_fails_explicitly`: off → 409 `research_unavailable` with reason `not_configured`; local-only mode → `blocked` (zero egress); provider outage → `failed`. Each says nothing was searched or added, adds no findings, and is logged in `research_query`. Playwright: the Research tab shows "… is not turned on. Nothing was searched" and the measured list stays empty |
+
+### Other Phase 05 requirements → evidence
+
+| Requirement | Evidence |
+|---|---|
+| New Book wizard with all requested fields | `NewBookPage.tsx` (four steps); `test_wizard_creates_book_brief_and_links_sources`; Playwright (axe clean) |
+| Research workspace: topic finder, query drafting, providers only when configured, editable findings with source/date/URL, competitor notes, KDP keyword brainstorming | Research tab; `POST …/research/ideas` (topics, queries, keywords, each flagged `ai_brainstorm_not_measured`, keywords also `no_search_volume_data`); `PATCH …/findings/{id}`; "Save as comparable title" copies from the server-side query log |
+| Heuristic observations kept apart from measured evidence | API `evidence` field ("measured" / "heuristic"); two separate UI regions; DB CHECK: measured ⇒ named source |
+| Brief with target reader, promise, exclusions, value proposition, teaching or plot arc, explicit assumptions | Brief tab; `test_brief_approval_and_new_version_on_change` |
+| Outline: stable IDs, drag-reorder, merge/split, hierarchy, chapter goals, target words, estimated writing work | `lib/outline.ts` + Vitest (IDs kept on move, merge keeps the first ID, split, nest/un-nest, locked entries never merged or split); server validation `test_outline_structure_is_validated`; totals with hours labelled as estimates |
+| Approval before any bulk generation | `test_bulk_generation_requires_an_approved_applied_outline` |
+| Nonfiction source/citation requirements; fiction plot, character and continuity requirements | Per-node `requirements` in the outline; `requirements_check` stored with each chapter proposal (citations found vs required, characters named; plot and continuity marked "review yourself") |
+| Cost and time previewed as estimates; hard budget cap; chapter limit | `test_budget_cap_blocks_and_stops_runs` (unknown cost, currency mismatch and over-cap estimate refused; reaching the cap mid-run cancels the queued chapters), `test_chapter_limit_blocks_large_runs`; Playwright estimate table ("Local model: no API charge") |
+| Outline-first, one-chapter and entire-book modes honour manual edits and locks | `test_entire_book_honours_prose_locks_and_review` (locked, approved, unsaved-draft and prose chapters skipped with reasons; output is proposals only). Playwright: "Every eligible chapter" → suggestions wait for review and nothing is written |
+| Backup | `test_backup_restore_keeps_brief_findings_outlines_and_links` |
+
+## Phase 05: what was built
+
+**Core**
+- Migration `0006_planning`: `book_brief`, `research_finding` (with the metric and measured-source CHECKs), `research_query`, `outline_version` (one approved per book, partial unique index) and `generation_run`. `migrations/env.py` now excludes the FTS5 shadow tables from autogenerate.
+- `planning/`:
+  - `outline.py`: tree validation (part > chapter > section, at most 500 nodes), stable `n_<ULID>` IDs, totals, keeping locked nodes;
+  - `skeleton.py`: applies an approved outline to chapters without touching prose;
+  - `research.py`: the market-metric guard;
+  - `runs.py`: the budget stop and requirement checks.
+- `providers/research_adapters.py`: the Open Library adapter (bibliographic fields only, generic User-Agent, `openlibrary.org` on the egress allowlist) and a dev/test catalogue that can simulate an outage.
+- Planning jobs (`outline`, `research_ideas`) on the existing job runner: `jobs/planning_prompts.py` (schemas, "no market data" rule) and `jobs/planning_exec.py`. Chapter drafting from the outline uses the normal chapter job path with run, node and requirements context; each finished chapter records its actual cost against the run.
+- `services/planning.py` and `api/routes_planning.py`: 23 new endpoints (102 API paths in total), including `POST /api/books` for the wizard.
+- Backup includes the brief, findings and every outline version.
+
+**UI**
+- **New book** wizard: the project form plus "Reader and promise", "Shape and sources" and "Approvals and budget".
+- **Plan** page per book, with four tabs:
+  - **Brief**, with approve and versioning;
+  - **Research**: measured evidence, notes and ideas (heuristic), public catalogue search, and AI brainstorm;
+  - **Outline**: the AI proposal with approve, edit or reject; your draft, with drag handles, Up/Down/Indent/Outdent, merge, split, add, remove, lock, goals and requirements; the approved outline with "Apply to manuscript" and an apply report;
+  - **Draft chapters**: one chapter or every eligible chapter, an estimate table, then runs with status and Stop.
+- **AI settings**: a "Research search" section to turn Open Library on (needs cloud allowed).
+- Navigation: Research is no longer "not implemented"; the book page links to Plan.
+
+**Docs:** ADR-0006; SECURITY §7d; DATA_MODEL §2.3b; ARCHITECTURE §7.3; TEST_PLAN §4.4b; README "Planning a book (Phase 05)".
+
+## Decisions taken in Phase 05 (need your validation)
+
+| # | Decision | Why | Reversible? |
+|---|---|---|---|
+| P5-1 | Outline sections stay inside their chapter (as `##` headings); only parts and chapters become chapter rows | One document per chapter; no tiny section documents | Yes |
+| P5-2 | Open Library is the only real research provider, off by default, and it needs `cloud_allowed` | Free and keyless, with bibliographic data only; no licensed market-data source exists | Yes, add adapters behind the egress gate |
+| P5-3 | Time estimates come only from this workspace's measured throughput; otherwise "unknown" | No guessed speeds | Yes |
+| P5-4 | An unknown cost blocks a run when a budget cap is set (before and during the run) | A cap that cannot be checked is not a cap | Yes |
+| P5-5 | Entire-book mode skips chapters that already have text; one-chapter mode may append to one | Bulk runs never pile onto your prose | Yes |
+| P5-6 | Metric statements in AI brainstorms are removed (and flagged), not just labelled | "Never fabricate" is stronger than "label as fabricated" | Yes |
+| P5-7 | The brief's kind is derived from the project type (fiction/serial → fiction; course/technical → manual) | One source of truth | Yes |
+| P5-8 | Every drafted chapter is a proposal, whatever the approval preference | "AI never silently overwrites" | Yes (a batch-accept could come later) |
+
+## Known limitations (Phase 05, honest list)
+
+1. **No licensed market data.** Sales rank, demand, competition and search volumes are "not available" by design.
+2. **Plot points and continuity are not machine-checked**; the requirement check marks them "review yourself".
+3. **Outline generation is one model call.** Very long books depend on the model's output limit.
+4. **The first run on a model always shows "time unknown"** (no throughput history yet).
+5. **Research query logs and generation runs are not backed up** (findings, briefs and outlines are).
+6. Open Library was not called live (the adapter is tested through a mock transport with its documented response shape and a simulated connection failure; the socket guard forbids real network in tests).
+7. Real Ollama and cloud models remain unexercised here (see Phase 03).
+8. My visual check opened a hand-written outline draft on "The Quiet Engine" in the dev workspace but did not save it, so nothing was added.
+
+## Phase 05: bugs found and fixed
+
+- **Alembic autogenerate tried to drop the FTS5 tables** from Phase 04. They are now excluded in `migrations/env.py`.
+- **The dollarmath plugin crashed on text ending in a backslash** (its escape check read `src[-1]`). Patched in `bookmd.py`, with a regression test.
+- **Nested-transaction deadlock** when listing research providers inside a request transaction. It now reads in the same session.
+
+## Phase 06 handoff
+
+Preserve:
+- outline node IDs and `chapter.outline_node_id` as the link between plan and manuscript;
+- the skeleton rules (never touch prose; keep, don't delete, chapters with text);
+- proposals as the only way AI text reaches a revision;
+- the budget stop in `runs.record_cost` and the run's skip reasons;
+- the market-metric guard and the measured/heuristic split;
+- research only through the egress gate, failing explicitly.
+
+Start Phase 06 from `generation_run` and the per-node requirements: they are the natural inputs for multi-step chapter jobs (`job_step`, deferred since Phase 03) and for continuity checks across chapters.
+
+---
 
 ## Phase 04 evidence (real results, 2026-11-22, Windows 11, CPython 3.12.13, Node 26.13)
 
@@ -466,6 +576,11 @@ Start Phase 02 with:
 ---
 
 ## Phase log
+
+### Phase 05: Project planning (2026-11-22)
+- Built as described in "Phase 05: what was built" on `phase/05-planning`.
+- Open Library's search API was checked against its official docs before the adapter was written.
+- Checked by hand in the desktop browser pane (Plan → Outline → the hand-written outline editor with a nested section and its tools), and end to end with Playwright against the built-in test model.
 
 ### Phase 04: Knowledge and evidence (2026-11-22)
 - Built as described in "Phase 04: what was built" on `phase/04-knowledge`.

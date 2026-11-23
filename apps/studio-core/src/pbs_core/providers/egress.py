@@ -27,6 +27,8 @@ CLOUD_HOSTS: dict[str, frozenset[str]] = {
     "gemini": frozenset({"generativelanguage.googleapis.com"}),
     "groq": frozenset({"api.groq.com"}),
     "xai": frozenset({"api.x.ai"}),
+    # Research search (Phase 05): public bibliographic metadata only.
+    "openlibrary": frozenset({"openlibrary.org"}),
 }
 LOCAL_KINDS = frozenset({"mock", "ollama"})
 

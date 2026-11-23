@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type ReactNode } from "react";
 import type { Project, ProjectCreate, ProjectType, PublicationFormat } from "../../api/client";
 import { ApiError } from "../../api/client";
 import { FORMATS, PROJECT_TYPES } from "../../lib/format";
@@ -69,9 +69,11 @@ interface Props {
   serverError?: unknown;
   onSubmit: (payload: ProjectCreate) => void;
   onCancel?: () => void;
+  /** More fieldsets shown before the buttons (the New Book wizard adds the brief here). */
+  extra?: ReactNode;
 }
 
-export function ProjectForm({ initial, submitLabel, busy, serverError, onSubmit, onCancel }: Props) {
+export function ProjectForm({ initial, submitLabel, busy, serverError, onSubmit, onCancel, extra }: Props) {
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState<Errors>({});
   const id = useId();
@@ -236,6 +238,7 @@ export function ProjectForm({ initial, submitLabel, busy, serverError, onSubmit,
           </div>
         </fieldset>
       </div>
+      {extra}
       <div className="page-actions">
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? "Saving…" : submitLabel}

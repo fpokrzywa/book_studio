@@ -110,6 +110,19 @@ Adapter contract tests (`test_ai_providers.py`) use recorded wire formats over `
 | Backup/restore of citations, sources, claims, answers | `test_backup_restore_keeps_citations_sources_claims_and_answers` |
 | UI | `Knowledge.test.tsx` and `Ai.test.tsx` (paragraph sources) in Vitest; `e2e/knowledge.spec.ts` in Playwright |
 
+### 4.4b Planning (Phase 05, as built)
+
+| Area | Tests |
+|---|---|
+| Idea → brief → AI outline (deterministic test model) → approve → skeleton | `test_planning.py::test_idea_to_approved_outline_with_test_model`, golden step 05, Playwright `planning.spec.ts` |
+| Changed outline keeps prose, history and locks | `test_changed_outline_keeps_prose_history_and_locks`, Playwright |
+| AI never overwrites the draft; locked entries kept | `test_ai_regeneration_never_overwrites_draft_and_keeps_locked` |
+| No fabricated market metrics | `test_ai_brainstorm_cannot_carry_market_metrics` (incl. DB CHECK), `test_author_findings_separate_measured_from_heuristic`, `test_ai_finding_cannot_become_measured`, `test_open_library_results_keep_bibliographic_data_only` |
+| Research provider fail-safe (off, blocked, down) | `test_research_provider_off_blocked_or_down_fails_explicitly`, Playwright |
+| Modes, locks, limits, budget cap (before and during a run) | `test_entire_book_honours_prose_locks_and_review`, `test_chapter_limit_blocks_large_runs`, `test_budget_cap_blocks_and_stops_runs`, `test_bulk_generation_requires_an_approved_applied_outline` |
+| Backup of planning data | `test_backup_restore_keeps_brief_findings_outlines_and_links` |
+| UI | Vitest `lib/outline.test.ts` (merge, split, nest, locks) and `Plan.test.tsx`; Playwright `planning.spec.ts` |
+
 ### 4.5 Later phases (summary; detailed in each phase's BUILD_STATE handoff)
 - Knowledge: dedupe by hash. A disabled source is never retrieved. Injection fixture causes no state change. Citations resolve only to ledger entries.
 - Planning: unsupported market metrics are never produced (assert the schema has no such fields unless a licensed source is configured). An outline change preserves prose.

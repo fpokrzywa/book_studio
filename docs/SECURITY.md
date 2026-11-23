@@ -118,6 +118,23 @@ The remote `github.com/fpokrzywa/book_studio` is **public**. Therefore:
   - nothing outside the proposal changes (chapter, privacy mode, providers, sources);
   - the preview escapes raw HTML.
 
+## 7d. Phase 05 controls as built (details: ADR-0006)
+
+- **Research egress.**
+  - Open Library is the only network research source. It is off by default and needs `cloud_allowed`.
+  - Its traffic goes through the egress gate (allowlist `openlibrary.org`).
+  - It sends only the words the author typed, with a generic User-Agent and no personal details.
+  - Every attempt, including blocked and failed ones, is recorded in `research_query`. Failures return an explicit 409 and add nothing.
+- **No fabricated market data.**
+  - AI brainstorms are stripped of sales, ranking, demand, competition and search-volume statements, and the removal is flagged.
+  - DB CHECKs keep metrics to provider rows only, and keep "measured" findings tied to a named source.
+  - Prompts state that no market data exists.
+- **Planning text is untrusted data.** Brief fields and findings are passed to the model in random-tag envelopes, like all other untrusted material.
+- **Spending.**
+  - The budget cap is enforced before a run (upper bound) and during it (actual cost).
+  - An unknown cost while a cap is set stops the run.
+  - Bulk drafting needs an approved, applied outline. Its output is only ever proposals.
+
 ## 8. Security acceptance checks by phase
 
 | Phase | Must pass |

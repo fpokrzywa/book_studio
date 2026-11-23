@@ -248,3 +248,10 @@ def test_attribute_values_with_backslashes_round_trip() -> None:
         bl = [{"type": "figure", "src": "asset:0123456789abcdef", "caption": [{"t": "text", "v": "0"}], "alt": alt}]
         text = serialize.serialize({"schema": "bdm/1", "blocks": bl})
         assert bookmd.strip_ids(parse(text).doc["blocks"]) == bookmd.strip_ids(bl), text
+
+
+def test_inline_math_survives_a_trailing_backslash() -> None:
+    """Hypothesis counterexample (Phase 05 run): the dollarmath plugin read src[-1] for a leading $."""
+    bl = [{"type": "paragraph", "inlines": [{"t": "math", "tex": "x^2"}, {"t": "text", "v": " \\"}]}]
+    text = serialize.serialize({"schema": "bdm/1", "blocks": bl})
+    assert bookmd.strip_ids(parse(text).doc["blocks"]) == bookmd.strip_ids(bl), text

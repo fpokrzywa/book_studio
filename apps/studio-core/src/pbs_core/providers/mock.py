@@ -24,7 +24,7 @@ from pbs_core.providers.base import (
     ProviderError,
     Usage,
 )
-from pbs_core.providers.mock_knowledge import with_knowledge
+from pbs_core.providers.mock_knowledge import planning_answer, with_knowledge
 
 MODELS = [
     ModelDesc(
@@ -64,7 +64,10 @@ class MockAdapter:
                 raise ProviderError(
                     "rate_limited", "The provider is rate-limiting requests.", retry_after=0.05, status=429
                 )
-        if req.json_schema is not None:
+        planned = planning_answer(req.json_schema, prompt) if req.json_schema is not None else None
+        if planned is not None:
+            text = "not json" if "[[mock:bad_json]]" in prompt else planned
+        elif req.json_schema is not None:
             text = (
                 "not json"
                 if "[[mock:bad_json]]" in prompt

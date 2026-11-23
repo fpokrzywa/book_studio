@@ -219,6 +219,15 @@ Adapters (`providers/`): `mock`, `ollama` (REST), `openai` / `groq` / `xai` (off
 
 `jobs/execute.py` runs retrieval, builds prompts with envelopes, processes citations, and writes the proposal together with its ledger claims in one transaction. See ADR-0005.
 
+### 7.3 Planning layer (Phase 05)
+`pbs_core.planning` contains:
+- `outline`: tree validation, stable IDs, locks, totals;
+- `skeleton`: applies an approved outline to chapters without touching prose;
+- `research`: the market-metric guard;
+- `runs`: the budget stop and requirement checks.
+
+The Open Library adapter is `providers/research_adapters.py`. Planning jobs (outline, research brainstorm) reuse the job runner, with an executor branch in `jobs/planning_exec.py`. Chapter drafting from the outline goes through the normal chapter job path (`ai.enqueue` with run, node and requirements context). See ADR-0006.
+
 ## 8. Frontend architecture
 
 - React 19 + TypeScript (strict) + Vite. React Router (declarative routes). TanStack Query for server state; no global client store unless needed.

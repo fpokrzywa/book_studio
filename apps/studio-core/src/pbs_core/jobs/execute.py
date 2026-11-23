@@ -15,9 +15,10 @@ from sqlalchemy import select
 
 from pbs_core.context import AppContext
 from pbs_core.domain.clock import to_iso
-from pbs_core.jobs import prompts
+from pbs_core.jobs import planning_exec, prompts
 from pbs_core.jobs.runner import LEASE_SECONDS, add_log
 from pbs_core.knowledge import citations, retrieval
+from pbs_core.planning import runs
 from pbs_core.providers import registry
 from pbs_core.providers.base import Cancelled, ChatMessage, GenRequest, ProviderError, extract_json
 from pbs_core.providers.egress import EgressBlockedError, cloud_activity
@@ -97,42 +98,49 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         )
         return
 
-    sel_start, sel_end = inp.get("selection_start"), inp.get("selection_end")
-    selection = base_text[sel_start:sel_end] if sel_start is not None and sel_end is not None else None
-    context_text = costs.clip_context(
-        base_text, sel_start, sel_end, int(inp.get("max_context_chars", costs.MAX_CONTEXT_CHARS))
-    )
-    # Knowledge is chosen now, at run time: a source disabled after queueing is not used.
-    query = retrieval_query(inp.get("instruction", ""), selection, context_text, snapshot["chapter_title"])
-    with ctx.db.tx() as s:
-        found = retrieval.retrieve(
-            s,
-            snapshot["project_id"],
-            query,
-            use_sources=bool(inp.get("use_sources", True)),
-            use_interview=bool(inp.get("use_interview", False)),
+    planning = inp.get("kind") in planning_exec.KINDS
+    found = retrieval.Retrieved({}, [], [], "", 0)
+    voice = None
+    processed: citations.Processed | None = None
+    if planning:
+        built = planning_exec.build(inp)
+    else:
+        sel_start, sel_end = inp.get("selection_start"), inp.get("selection_end")
+        selection = base_text[sel_start:sel_end] if sel_start is not None and sel_end is not None else None
+        context_text = costs.clip_context(
+            base_text, sel_start, sel_end, int(inp.get("max_context_chars", costs.MAX_CONTEXT_CHARS))
         )
-        add_log(
-            s,
-            ctx,
-            job_id,
-            f"Knowledge: {len(found.passages)} passage(s) from {found.source_count} usable source(s); "
-            f"{len(found.answers)} interview answer(s).",
+        # Knowledge is chosen now, at run time: a source disabled after queueing is not used.
+        query = retrieval_query(inp.get("instruction", ""), selection, context_text, snapshot["chapter_title"])
+        with ctx.db.tx() as s:
+            found = retrieval.retrieve(
+                s,
+                snapshot["project_id"],
+                query,
+                use_sources=bool(inp.get("use_sources", True)),
+                use_interview=bool(inp.get("use_interview", False)),
+            )
+            add_log(
+                s,
+                ctx,
+                job_id,
+                f"Knowledge: {len(found.passages)} passage(s) from {found.source_count} usable source(s); "
+                f"{len(found.answers)} interview answer(s).",
+            )
+        voice = voice_service.for_prompt(ctx, inp["voice_profile_id"]) if inp.get("voice_profile_id") else None
+        built = prompts.build(
+            snapshot["task"],
+            instruction=inp.get("instruction", ""),
+            chapter_title=snapshot["chapter_title"],
+            book_title=snapshot["book_title"],
+            context_text=context_text,
+            selection=selection,
+            target_language=inp.get("target_language"),
+            target_words=inp.get("target_words"),
+            sources=[r for r in found.refs.values() if r.kind == "source"],
+            answers=[r for r in found.refs.values() if r.kind == "interview"],
+            voice=voice,
         )
-    voice = voice_service.for_prompt(ctx, inp["voice_profile_id"]) if inp.get("voice_profile_id") else None
-    built = prompts.build(
-        snapshot["task"],
-        instruction=inp.get("instruction", ""),
-        chapter_title=snapshot["chapter_title"],
-        book_title=snapshot["book_title"],
-        context_text=context_text,
-        selection=selection,
-        target_language=inp.get("target_language"),
-        target_words=inp.get("target_words"),
-        sources=[r for r in found.refs.values() if r.kind == "source"],
-        answers=[r for r in found.refs.values() if r.kind == "interview"],
-        voice=voice,
-    )
     temperature = params.get("temperature")
     native_schema = built.json_schema is not None and registry.native_schema_ok(
         registry.model_capabilities(ctx, provider.id, snapshot["model"])
@@ -201,11 +209,14 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         payload = result.text.strip()
         if not payload:
             raise ProviderError("invalid_output", "The model returned an empty answer.")
-        if built.json_schema is not None:
+        if planning:
+            planned = planning_exec.parse(inp, payload, ctx.ids.new)
+        elif built.json_schema is not None:
             payload = _structured_to_markdown(payload)
         # Check every citation marker against the passages actually provided; flag the rest.
-        processed = citations.process(payload, found.refs)
-        payload = processed.text_md
+        if not planning:
+            processed = citations.process(payload, found.refs)
+            payload = processed.text_md
     except Cancelled:
         _finish(
             ctx,
@@ -246,6 +257,11 @@ def run_job(ctx: AppContext, job_id: str, cancel: threading.Event, ollama_slot: 
         )
         return
 
+    if planning:
+        planning_exec.commit(ctx, job_id, inp, planned, result, provider, snapshot, built.template)
+        return
+    if processed is None:  # pragma: no cover - chapter jobs always process citations above
+        raise RuntimeError("chapter job finished without citation processing")
     knowledge = {
         "query": found.query[:300],
         "sources": [
@@ -314,6 +330,8 @@ def _commit(
             return
         existing = s.scalars(select(Proposal).where(Proposal.job_id == job_id)).one_or_none()
         cost = costs.cost_of(s, provider, snapshot["model"], result.usage)
+        if inp.get("run_id"):  # part of a generation run: enforce its budget cap
+            runs.record_cost(s, ctx, inp["run_id"], cost.amount, cost.currency, job_id)
         s.add(
             UsageRecord(
                 id=ctx.ids.new(),
@@ -359,6 +377,10 @@ def _commit(
                             "finish_reason": result.finish_reason,
                             "generated_at": ctx.clock.iso(),
                             "knowledge": knowledge,
+                            "outline_node_id": inp.get("outline_node_id"),
+                            "requirements_check": runs.requirements_check(inp["requirements"], processed, payload)
+                            if inp.get("requirements")
+                            else None,
                         }
                     ),
                     created_at=ctx.clock.iso(),

@@ -21,6 +21,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
+import mdit_py_plugins.dollarmath.index as _dollarmath_index
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 from mdit_py_plugins.attrs import attrs_plugin
@@ -30,6 +31,24 @@ from mdit_py_plugins.footnote import footnote_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 
 from pbs_core.domain.wordcount import count_words
+
+
+def _is_escaped(state: Any, back_pos: int, mod: int = 0) -> bool:
+    """Count the backslashes right before ``back_pos`` (fixed copy of the plugin's helper).
+
+    mdit-py-plugins 0.7.0 reads ``src[-1]`` for a dollar sign at the very start of the text, which
+    Python wraps to the *last* character: a paragraph ending in a backslash then hid its first inline
+    math. Found by the serializer property test.
+    """
+    backslashes = 0
+    i = back_pos - 1
+    while i >= 0 and state.src[i] == "\\":
+        backslashes += 1
+        i -= 1
+    return backslashes > 0 and (backslashes % 2) != mod
+
+
+_dollarmath_index.is_escaped = _is_escaped
 
 PARSER_VERSION = "bookmd-1.0"
 BDM_SCHEMA = "bdm/1"

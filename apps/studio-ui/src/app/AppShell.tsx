@@ -23,10 +23,7 @@ const WORKING: NavItem[] = [
 ];
 
 /** Later-phase sections: visible so the roadmap is honest, but not navigable. */
-export const LATER: { label: string; phase: string }[] = [
-  { label: "Research", phase: "05" },
-  { label: "Publishing", phase: "07" },
-];
+export const LATER: { label: string; phase: string }[] = [{ label: "Publishing", phase: "07" }];
 
 export function AppShell() {
   const location = useLocation();

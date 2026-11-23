@@ -16,6 +16,7 @@ import {
   type Provider,
   type Route,
 } from "../../api/ai";
+import { useResearchProviders, useSetResearchProviders } from "../../api/planning";
 import { useAnnounce } from "../../components/Announcer";
 import { ConfirmDialog } from "../../components/Dialog";
 import { PageHeader } from "../../components/Misc";
@@ -42,6 +43,7 @@ export function AiSettingsPage() {
         </div>
       ) : null}
       <ProvidersSection providers={providers.data} keyStore={status.data.secret_store.backend} />
+      <ResearchSearchSection />
       <RoutesSection providers={providers.data} />
       <PricesSection providers={providers.data.filter((p) => !p.local)} />
     </>
@@ -674,5 +676,47 @@ function ProviderPrices({ provider }: { provider: Provider }) {
         </button>
       </form>
     </div>
+  );
+}
+
+function ResearchSearchSection() {
+  const id = useId();
+  const providers = useResearchProviders();
+  const set = useSetResearchProviders();
+  if (!providers.data) return null;
+  const on = (kind: string) => providers.data.find((p) => p.kind === kind)?.enabled ?? false;
+  return (
+    <section className="panel" aria-labelledby={id + "-h"}>
+      <h2 id={id + "-h"}>Research search</h2>
+      <p className="hint">
+        Public catalogues the Research tab of a book may search. Off unless you turn them on. They return book
+        details only (title, author, year, publisher, subjects), never sales, rankings or demand figures.
+      </p>
+      <ul className="checks">
+        {providers.data.map((p) => (
+          <li key={p.kind}>
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                checked={p.enabled}
+                disabled={set.isPending}
+                onChange={(e) =>
+                  set.mutate({
+                    openlibrary: p.kind === "openlibrary" ? e.target.checked : on("openlibrary"),
+                    mock: p.kind === "mock" ? e.target.checked : on("mock"),
+                  })
+                }
+              />
+              {p.label}
+            </label>
+            <p className="hint">
+              {p.sends}
+              {p.enabled && !p.available && p.unavailable_reason ? " " + p.unavailable_reason : ""}
+            </p>
+          </li>
+        ))}
+      </ul>
+      {set.error ? <InlineError error={set.error} /> : null}
+    </section>
   );
 }

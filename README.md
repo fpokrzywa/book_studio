@@ -159,6 +159,15 @@ Optional live check against a real provider (sends one short fixed prompt):
 $env:PBS_OPENAI_API_KEY = "<your key>"; apps\studio-core\.venv\Scripts\python.exe -m pbs_core.live_check --kind openai --model <model-id>
 ```
 
+## Planning a book (Phase 05)
+
+- **New book** asks, in four optional steps, about the reader, the promise, the shape, sources, how AI drafts reach you, and a budget cap.
+- A book's **Plan** has four tabs:
+  - **Brief**: reader, promise, exclusions, arc, and assumptions stated openly.
+  - **Research**: your findings; measured evidence (with a source) is kept apart from notes and ideas. Search Open Library if you turn it on in AI settings. AI brainstorms for topics, search queries or KDP keywords are ideas only, and any sales, ranking, demand or search-volume claim is removed.
+  - **Outline**: ask AI for a proposal, or write your own. Reorder, nest, merge, split and lock entries, approve, then **Apply to manuscript** to create the chapters. Applying a changed outline never touches chapters with text.
+  - **Draft chapters**: one chapter or the whole book from the approved outline. You see an estimate first, and runs respect your budget cap and chapter limit. Every chapter arrives as a suggestion for you to review.
+
 ## Sources, evidence, voice and interviews (Phase 04)
 
 - **Sources.** Open a book, then **Sources**, and add Markdown, text, HTML, Word or text-based PDF files. Each is kept unchanged and split into passages you can search; matched words are highlighted and every hit says why it matched. Turn **Use for AI** off to keep a source out of new AI suggestions, or **Remove** it. **Knowledge** in the menu holds shared libraries that books can opt in to.

@@ -87,7 +87,7 @@ def cost_of(s: Session, provider: ProviderConfig, model: str, usage: Usage) -> C
 
 def estimate(
     s: Session, provider: ProviderConfig, model: str, prompt_chars: int, max_output_tokens: int
-) -> dict[str, object]:
+) -> dict[str, Any]:
     input_tokens = math.ceil(prompt_chars / CHARS_PER_TOKEN)
     out: dict[str, Any] = {
         "input_tokens": input_tokens,

@@ -6,6 +6,7 @@ that owns them, so the scenario's progress is visible in every test run.
 """
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -96,7 +97,6 @@ def test_steps_06_07_15_draft_review_accept_with_zero_egress(workspace: Path, ne
 
 
 PENDING = [
-    ("05", "brief + outline generation with mock provider", "05"),
     ("11", "export EPUB, DOCX, PDF (Markdown and HTML exports are covered)", "07"),
     ("12", "validate exports (preflight)", "07"),
     ("13", "KDP handoff package", "07"),
@@ -119,3 +119,13 @@ def test_step_04_ingest_knowledge_sources(client: TestClient) -> None:
     assert hit["citation_key"] == src["citation_key"] and hit["locator"].startswith("para")
     client.delete(f"/api/knowledge/sources/{src['id']}")
     assert client.get(f"/api/projects/{p['id']}/knowledge/search", params={"q": "spiral"}).json()["hits"] == []
+
+
+def test_step_05_brief_and_outline_with_test_model(client: TestClient, runner: Any) -> None:
+    """05: from an idea, a brief and an approved, applied outline using the deterministic test model."""
+    from tests.test_planning import approve_and_apply, mock_provider, new_book, outline_from_ai
+
+    pid = new_book(client)["project"]["id"]
+    proposal = outline_from_ai(client, runner, pid, mock_provider(client))
+    report = approve_and_apply(client, pid, proposal["id"])
+    assert len(report["created"]) == 4 and len(client.get(f"/api/projects/{pid}/chapters").json()) == 4

@@ -165,6 +165,19 @@ Indexes: `(status, updated_at)`. Library search (as built) is a case-folded subs
 - **`interview_session`, `interview_question`** (`origin bank|author`) and **`interview_answer`** (immutable; `supersedes_id` chains versions).
 - **Not built:** `chunk_embedding` (semantic search) and a separate `citation` table. Keys live on `source`, and `/projects/{id}/citations` exports metadata.
 
+### 2.3b Phase 05 tables as built (migration `0006`, ADR-0006)
+
+- **`book_brief`** (one per book): kind, genre, purpose, promise, tone, author profile, desired chapters, approval preference, budget cap and currency, chapter limit per run, words per hour, target reader, exclusions, value proposition, arc, assumptions, `status (draft|approved)`, `version`.
+- **`research_finding`**:
+  - kind: measured, heuristic, note, competitor, keyword, topic or query;
+  - origin: author, ai_brainstorm or provider;
+  - text, source title, URL and date, `retrieved_at`, meta (competitor notes), `metrics_json`, `flags_json`, `selected`, `archived_at`;
+  - CHECKs: measured ⇒ source; metrics ⇒ provider origin.
+- **`research_query`**: provider, query, `status (ok|failed|blocked)`, result count, raw provider results (`results_json`), error.
+- **`outline_version`**: `version_no`, `status` (draft, proposed, approved, superseded or rejected), `origin`, `nodes_json` (tree with stable `n_<ULID>` IDs), `based_on_id`, `brief_version`, research IDs, `job_id`, provenance, `approved_at`, `applied_at`, `apply_report_json`. A partial unique index allows one approved outline per book.
+- **`generation_run`**: mode (one_chapter or entire_book), status, outline version, budget cap, currency, spent, unknown-cost count, job IDs, skipped chapters with reasons, estimate, stop reason.
+- **`chapter.outline_node_id`** (from Phase 01) links a chapter to its node.
+
 ### 2.4 Phase 04–08 tables (design intent)
 
 - **Knowledge:** `knowledge_library (id, scope project|shared, project_id nullable, name)`, `project_library_link`, `knowledge_source (id, library_id, kind file|url|interview, title, uri, original_file_id, retrieved_at, content_sha256, enabled, tags_json, index_status)`, `source_chunk (id, source_id, ordinal, text, heading_path, page_from, page_to, char_start, char_end, sha256)` (immutable), `source_chunk_fts` (FTS5, external content), `chunk_embedding (chunk_id, model, dim, vector BLOB)` (optional).

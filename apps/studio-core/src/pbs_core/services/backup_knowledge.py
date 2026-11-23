@@ -31,6 +31,7 @@ from pbs_core.storage.knowledge_models import (
     SourceChunk,
 )
 from pbs_core.storage.models import Base, OriginalFile
+from pbs_core.storage.planning_models import BookBrief, OutlineVersion, ResearchFinding
 
 RowFn = Callable[[Any], dict[str, Any]]
 
@@ -48,6 +49,9 @@ def collect(s: Session, project_id: str, row: RowFn) -> tuple[dict[str, list[dic
     questions = s.scalars(select(InterviewQuestion).where(InterviewQuestion.project_id == project_id)).all()
     answers = s.scalars(select(InterviewAnswer).where(InterviewAnswer.project_id == project_id)).all()
     originals = [o for o in (s.get(OriginalFile, x.original_file_id) for x in sources) if o is not None]
+    brief = s.get(BookBrief, project_id)
+    findings = s.scalars(select(ResearchFinding).where(ResearchFinding.project_id == project_id)).all()
+    outlines = s.scalars(select(OutlineVersion).where(OutlineVersion.project_id == project_id)).all()
     tables = {
         "knowledge_library": [row(x) for x in libs],
         "source": [row(x) for x in sources],
@@ -57,6 +61,9 @@ def collect(s: Session, project_id: str, row: RowFn) -> tuple[dict[str, list[dic
         "interview_session": [row(x) for x in sessions],
         "interview_question": [row(x) for x in questions],
         "interview_answer": sorted((row(x) for x in answers), key=lambda r: r["answered_at"]),
+        "book_brief": [row(brief)] if brief else [],
+        "research_finding": [row(x) for x in findings],
+        "outline_version": sorted((row(x) for x in outlines), key=lambda r: r["version_no"]),
     }
     return tables, originals
 
@@ -193,5 +200,26 @@ def restore(
             interview_answer_id=answer_map.get(r.get("interview_answer_id") or ""),
         )
         s.add(ClaimSupport(**kw))
+    s.flush()
+    # Planning (Phase 05): the brief, research findings and every outline version. Outline node IDs are
+    # kept, so restored chapters stay linked to their outline entries.
+    for r in rows("book_brief"):
+        kw = kwargs(BookBrief, r)
+        kw.update(project_id=new_pid, author_profile_id=None)
+        s.add(BookBrief(**kw))
+    for r in rows("research_finding"):
+        kw = kwargs(ResearchFinding, r)
+        kw.update(id=new(), project_id=new_pid)
+        s.add(ResearchFinding(**kw))
+    outline_map: dict[str, str] = {r["id"]: new() for r in rows("outline_version")}
+    for r in rows("outline_version"):
+        kw = kwargs(OutlineVersion, r)
+        kw.update(
+            id=outline_map[r["id"]],
+            project_id=new_pid,
+            job_id=None,
+            based_on_id=outline_map.get(r.get("based_on_id") or ""),
+        )
+        s.add(OutlineVersion(**kw))
     s.flush()
     return {"sources": len(source_map), "claims": len(claim_map), "answers": len(answer_map)}

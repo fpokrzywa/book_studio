@@ -34,9 +34,14 @@ describe("New book page", () => {
   it("blocks submission with an announced, linked error, then creates the book", async () => {
     const { calls } = mockApi({
       "GET /api/system/info": () => ({ json: systemInfo }),
-      "POST /api/projects": ({ body }) => ({
+      "GET /api/voice/profiles": () => ({ json: [] }),
+      "GET /api/knowledge/libraries": () => ({ json: [] }),
+      "POST /api/books": ({ body }) => ({
         status: 201,
-        json: project({ title: (body as { title: string }).title }),
+        json: {
+          project: project({ title: (body as { project: { title: string } }).project.title }),
+          brief: {},
+        },
       }),
       "GET /api/projects/01ARZ3NDEKTSV4RRFFQ69G5FAV": () => ({ json: project() }),
       "GET /api/projects/01ARZ3NDEKTSV4RRFFQ69G5FAV/chapters": () => ({ json: [] }),
@@ -57,15 +62,26 @@ describe("New book page", () => {
     await user.type(title, "The Quiet Engine");
     await user.selectOptions(screen.getByLabelText("Kind of book"), "technical");
     await user.click(screen.getByLabelText("Paperback"));
+    await user.type(screen.getByLabelText("Main promise to the reader"), "Keep engines running");
+    await user.type(screen.getByLabelText("How many chapters?"), "8");
     await user.click(screen.getByRole("button", { name: "Create book" }));
 
     await screen.findByRole("heading", { name: "The Quiet Engine", level: 1 });
     expect(router.state.location.pathname).toBe("/projects/01ARZ3NDEKTSV4RRFFQ69G5FAV");
     const post = calls.find((c) => c.method === "POST");
     expect(post?.body).toMatchObject({
-      title: "The Quiet Engine",
-      project_type: "technical",
-      publication_formats: ["ebook", "paperback"],
+      project: {
+        title: "The Quiet Engine",
+        project_type: "technical",
+        publication_formats: ["ebook", "paperback"],
+      },
+      brief: {
+        kind: "manual",
+        promise: "Keep engines running",
+        desired_chapters: 8,
+        approval_preference: "review_each_chapter",
+      },
+      shared_library_ids: [],
     });
   });
 });

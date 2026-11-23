@@ -10,6 +10,7 @@ import { InterviewPage } from "../features/knowledge/InterviewPage";
 import { KnowledgePage } from "../features/knowledge/KnowledgePage";
 import { SourcePage } from "../features/knowledge/SourcePage";
 import { VoicePage } from "../features/knowledge/VoicePage";
+import { PlanPage } from "../features/planning/PlanPage";
 import { ChapterEditorPage } from "../features/editor/ChapterEditorPage";
 import { HelpPage } from "../features/help/HelpPage";
 import { ImportPage } from "../features/import/ImportPage";
@@ -42,6 +43,7 @@ export const routes: RouteObject[] = [
       { path: "projects/:projectId", element: <ProjectPage /> },
       { path: "projects/:projectId/chapters/:chapterId", element: <ChapterEditorPage /> },
       { path: "projects/:projectId/knowledge", element: <BookKnowledgePage /> },
+      { path: "projects/:projectId/plan", element: <PlanPage /> },
       { path: "projects/:projectId/evidence", element: <EvidencePage /> },
       { path: "projects/:projectId/interview", element: <InterviewPage /> },
       { path: "knowledge", element: <KnowledgePage /> },
@@ -49,16 +51,6 @@ export const routes: RouteObject[] = [
       { path: "voice", element: <VoicePage /> },
       { path: "activity", element: <ActivityPage /> },
       { path: "help", element: <HelpPage /> },
-      {
-        path: "research",
-        element: (
-          <NotAvailable
-            feature="Research"
-            phase="05"
-            what="Topic exploration, source capture and outline planning."
-          />
-        ),
-      },
       {
         path: "publishing",
         element: (

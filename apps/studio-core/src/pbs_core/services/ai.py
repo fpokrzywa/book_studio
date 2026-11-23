@@ -784,7 +784,8 @@ def estimate(ctx: AppContext, project_id: str, data: AiRequestIn) -> EstimateOut
         )
 
 
-def enqueue(ctx: AppContext, project_id: str, data: AiRequestIn) -> JobOut:
+def enqueue(ctx: AppContext, project_id: str, data: AiRequestIn, extra: dict[str, Any] | None = None) -> JobOut:
+    """Queue a chapter job. `extra` adds planning context (run id, outline node, requirements)."""
     key = f"{project_id}:{data.client_request_id}"
     with ctx.db.tx() as s:
         existing = s.scalars(select(Job).where(Job.idempotency_key == key)).one_or_none()
@@ -808,6 +809,7 @@ def enqueue(ctx: AppContext, project_id: str, data: AiRequestIn) -> JobOut:
             "use_sources": data.use_sources,
             "use_interview": data.use_interview,
             "voice_profile_id": data.voice_profile_id,
+            **(extra or {}),
         }
         job = Job(
             id=ctx.ids.new(),
@@ -848,6 +850,104 @@ def enqueue(ctx: AppContext, project_id: str, data: AiRequestIn) -> JobOut:
     if ctx.jobs is not None:
         ctx.jobs.wake()
     return out
+
+
+# ---------- shared by planning jobs (no chapter) ----------
+
+
+def resolve_model(
+    s: Session, task: str, provider_id: str | None, model_name: str | None, max_output_tokens: int | None = None
+) -> tuple[ProviderConfig, str, float | None, int]:
+    """Explicit provider and model, or the task's route. No hidden default, no fallback."""
+    if provider_id:
+        provider = _require_provider(s, provider_id)
+        if not model_name:
+            raise NeedsChoiceError("Choose a model for this provider.")
+        model, temperature, max_out = model_name, None, max_output_tokens
+    else:
+        route = s.get(TaskRoute, task)
+        if route is None:
+            raise NeedsChoiceError(f"No model is set for “{task}”. Choose one here or set a default in AI settings.")
+        provider = _require_provider(s, route.provider_config_id)
+        model = model_name or route.model_name
+        temperature = float(route.temperature) if route.temperature not in (None, "") else None
+        max_out = max_output_tokens or route.max_output_tokens
+    if not provider.enabled:
+        raise ConflictError(f"{provider.label} is turned off in AI settings.")
+    return provider, model, temperature, int(max_out or 4096)
+
+
+def cloud_block_reason(s: Session, project_id: str, provider: ProviderConfig) -> str | None:
+    if registry.is_local(provider):
+        return None
+    setting = s.get(AppSetting, "privacy_mode")
+    if (json.loads(setting.value_json) if setting else "local_only") != "cloud_allowed":
+        return f"Local-only mode is on, so {provider.label} cannot be used. Nothing was sent."
+    if s.get(CloudConsent, (project_id, provider.id)) is None:
+        return f"This project has not been allowed to send text to {provider.label}."
+    return None
+
+
+def queue_planning_job(
+    s: Session,
+    ctx: AppContext,
+    *,
+    project_id: str,
+    task: str,
+    provider: ProviderConfig,
+    model: str,
+    temperature: float | None,
+    max_out: int,
+    inp: dict[str, Any],
+    template: str,
+    estimate: dict[str, Any],
+    key: str,
+    summary: str,
+) -> Job:
+    now = ctx.clock.iso()
+    job = Job(
+        id=ctx.ids.new(),
+        project_id=project_id,
+        chapter_id=None,
+        task=task,
+        provider_config_id=provider.id,
+        provider_kind=provider.kind,
+        model_name=model,
+        params_json=json.dumps({"temperature": temperature, "max_output_tokens": max_out}),
+        input_json=json.dumps(inp),
+        prompt_template=template,
+        estimate_json=json.dumps(estimate),
+        status="queued",
+        stage="queued",
+        attempt=0,
+        max_attempts=3,
+        run_after=now,
+        cancel_requested=0,
+        idempotency_key=key,
+        created_at=now,
+    )
+    s.add(job)
+    s.flush()
+    where = "on this computer" if registry.is_local(provider) else f"to {provider.label} (cloud)"
+    add_log(s, ctx, job.id, f"Queued: {summary} with {model}, sent {where}.")
+    activity.record(
+        s,
+        ctx,
+        kind="ai_job_queued",
+        project_id=project_id,
+        ref_type="job",
+        ref_id=job.id,
+        summary=f"Asked {model} to {summary}",
+    )
+    return job
+
+
+def find_job(s: Session, key: str) -> Job | None:
+    return s.scalars(select(Job).where(Job.idempotency_key == key)).one_or_none()
+
+
+def job_out(s: Session, j: Job) -> JobOut:
+    return _job_out(s, j)
 
 
 # ---------- jobs ----------

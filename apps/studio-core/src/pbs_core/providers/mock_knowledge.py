@@ -40,3 +40,91 @@ def with_knowledge(text: str, prompt: str) -> str:
         paras.append(" ".join(sources[0][1].split()))
     paras.append("This closing paragraph has no source behind it.")
     return "\n\n".join(paras)
+
+
+# ---------- planning answers (outline, research brainstorm) ----------
+
+_FOCUS = [
+    "Foundations",
+    "First Steps",
+    "Tools",
+    "Common Mistakes",
+    "Practice",
+    "Troubleshooting",
+    "Going Further",
+    "Case Study",
+    "Review",
+    "Next Steps",
+    "Reference",
+    "Afterword",
+]
+
+
+def _field(prompt: str, label: str) -> str:
+    m = re.search(rf"{label}:\s*(.+)", prompt)
+    return m.group(1).strip() if m else ""
+
+
+def planning_answer(schema: dict[str, object], prompt: str) -> str | None:
+    """Deterministic outline or research items when the schema asks for them; None otherwise.
+
+    ``[[mock:metrics]]`` makes the brainstorm claim fabricated market figures, so the guard that removes
+    unsupported metrics can be tested.
+    """
+    import json
+
+    props = schema.get("properties") if isinstance(schema, dict) else None
+    if not isinstance(props, dict):
+        return None
+    fiction = "Kind of book: fiction" in prompt
+    if "chapters" in props:
+        try:
+            n = int(_field(prompt, "Desired number of chapters").split()[0])
+        except (ValueError, IndexError):
+            n = 5
+        n = max(1, min(n, 40))
+        try:
+            total = int(_field(prompt, "Target length").split()[0])
+        except (ValueError, IndexError):
+            total = 30000
+        promise = _field(prompt, "Core promise") or "the book's promise"
+        chapters = []
+        for k in range(1, n + 1):
+            focus = _FOCUS[(k - 1) % len(_FOCUS)]
+            sections = (
+                [
+                    {"title": "Opening scene", "goal": "Set the place and the pressure."},
+                    {"title": "Turn", "goal": "Something changes for the main character."},
+                ]
+                if fiction
+                else [
+                    {"title": f"Why {focus.lower()} matters", "goal": "Show the reader the problem."},
+                    {"title": f"How to approach {focus.lower()}", "goal": "Give steps the reader can follow."},
+                ]
+            )
+            chapters.append(
+                {
+                    "title": f"{focus}",
+                    "goal": f"[Test model output, not AI] Move the reader toward: {promise[:120]} (part {k} of {n}).",
+                    "target_words": max(500, total // n),
+                    "sections": sections,
+                    "requirements": ["Introduce the main character"]
+                    if fiction
+                    else ["Back each factual claim with a source"],
+                }
+            )
+        return json.dumps({"chapters": chapters})
+    if "items" in props:
+        what = "keyword" if "KDP keyword" in prompt else ("query" if "search queries" in prompt else "topic")
+        items = []
+        for i in range(1, 4):
+            rationale = f"[Test model output, not AI] Reason {i} for this {what}."
+            if "[[mock:metrics]]" in prompt:
+                rationale += (
+                    " This phrase gets 12,000 monthly searches with low competition. Top books have a BSR under 5,000."
+                )
+            items.append({"text": f"Test {what} {i}", "rationale": rationale})
+        if "[[mock:metrics]]" in prompt:
+            items.append({"text": "A bestseller niche worth $2 million a year", "rationale": "High demand."})
+        return json.dumps({"items": items})
+    return None

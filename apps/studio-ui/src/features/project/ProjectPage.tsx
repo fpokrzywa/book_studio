@@ -154,8 +154,12 @@ function ProjectView({ project }: { project: Project }) {
         <ManuscriptTree project={project} />
         <div className="stack">
           <section className="panel" aria-labelledby="project-research">
-            <h2 id="project-research">Research and evidence</h2>
+            <h2 id="project-research">Plan, research and evidence</h2>
             <ul className="link-list">
+              <li>
+                <Link to={`/projects/${project.id}/plan`}>Plan</Link>{" "}
+                <span className="muted">brief, research, outline and chapter drafting</span>
+              </li>
               <li>
                 <Link to={`/projects/${project.id}/knowledge`}>Sources</Link>{" "}
                 <span className="muted">reference files AI can quote and cite</span>
